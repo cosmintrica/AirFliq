@@ -1433,66 +1433,87 @@ private struct StepConstellation: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
-            let time = timeline.date.timeIntervalSinceReferenceDate
-            ZStack {
-                ForEach(0..<3, id: \.self) { index in
-                    Circle()
-                        .stroke(step.accent.opacity(0.10 + Double(index) * 0.05),
-                                style: StrokeStyle(lineWidth: 1,
-                                                   dash: [2 + CGFloat(index), 7]))
-                        .frame(width: 112 + CGFloat(index) * 24,
-                               height: 112 + CGFloat(index) * 24)
-                        .rotationEffect(.degrees((time * (isWorking ? 30 : 8) * (index.isMultiple(of: 2) ? 1 : -1))))
-                }
+            constellation(at: timeline.date.timeIntervalSinceReferenceDate)
+        }
+    }
 
-                Canvas { context, size in
-                    let center = CGPoint(x: size.width / 2, y: size.height / 2)
-                    for index in 0..<7 {
-                        let speed = isWorking ? 1.15 : 0.34
-                        let angle = time * speed + Double(index) * (.pi * 2 / 7)
-                        let radius = 64 + CGFloat(index % 3) * 9
-                        let point = CGPoint(x: center.x + cos(angle) * radius,
-                                            y: center.y + sin(angle) * radius)
-                        let rect = CGRect(x: point.x - 1.5, y: point.y - 1.5,
-                                          width: 3, height: 3)
-                        context.fill(Path(ellipseIn: rect), with: .color(step.accent.opacity(0.55)))
-                    }
-                }
+    private func constellation(at time: TimeInterval) -> some View {
+        ZStack {
+            orbitRings(at: time)
+            orbitParticles(at: time)
+            constellationGlow
+            constellationCenter
+        }
+    }
 
-                Circle()
-                    .fill(
-                        RadialGradient(colors: [step.accent.opacity(0.34),
-                                                step.accent.opacity(0.10), .clear],
-                                       center: .center, startRadius: 0, endRadius: 68)
-                    )
-                    .frame(width: 138, height: 138)
-                    .blur(radius: 4)
+    private func orbitRings(at time: TimeInterval) -> some View {
+        ForEach(0..<3, id: \.self) { index in
+            Circle()
+                .stroke(step.accent.opacity(0.10 + Double(index) * 0.05),
+                        style: StrokeStyle(lineWidth: 1,
+                                           dash: [2 + CGFloat(index), 7]))
+                .frame(width: 112 + CGFloat(index) * 24,
+                       height: 112 + CGFloat(index) * 24)
+                .rotationEffect(.degrees(
+                    time * (isWorking ? 30 : 8)
+                        * (index.isMultiple(of: 2) ? 1 : -1)
+                ))
+        }
+    }
 
-                if completionState == .granted {
-                    FlightPermissionGlyph(state: .granted,
-                                          isActive: true, size: 88,
-                                          animateCompletion: isCelebrating)
-                } else {
-                    ZStack {
-                        Circle()
-                            .fill(Color.black.opacity(0.32))
-                            .frame(width: 88, height: 88)
-                            .overlay {
-                                Circle().stroke(step.accent.opacity(0.34), lineWidth: 1)
-                            }
-                        Image(systemName: step.symbol)
-                            .font(.system(size: 34, weight: .medium))
-                            .foregroundStyle(
-                                LinearGradient(colors: [.white, step.accent],
-                                               startPoint: .topLeading,
-                                               endPoint: .bottomTrailing)
-                            )
-                            .symbolRenderingMode(.monochrome)
-                    }
-                    .shadow(color: step.accent.opacity(isWorking ? 0.8 : 0.38),
-                            radius: isWorking ? 24 : 14)
-                }
+    private func orbitParticles(at time: TimeInterval) -> some View {
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            for index in 0..<7 {
+                let speed = isWorking ? 1.15 : 0.34
+                let angle = time * speed + Double(index) * (.pi * 2 / 7)
+                let radius = 64 + CGFloat(index % 3) * 9
+                let point = CGPoint(x: center.x + cos(angle) * radius,
+                                    y: center.y + sin(angle) * radius)
+                let rect = CGRect(x: point.x - 1.5, y: point.y - 1.5,
+                                  width: 3, height: 3)
+                context.fill(Path(ellipseIn: rect),
+                             with: .color(step.accent.opacity(0.55)))
             }
+        }
+    }
+
+    private var constellationGlow: some View {
+        Circle()
+            .fill(
+                RadialGradient(colors: [step.accent.opacity(0.34),
+                                        step.accent.opacity(0.10), .clear],
+                               center: .center, startRadius: 0, endRadius: 68)
+            )
+            .frame(width: 138, height: 138)
+            .blur(radius: 4)
+    }
+
+    @ViewBuilder
+    private var constellationCenter: some View {
+        if completionState == .granted {
+            FlightPermissionGlyph(state: .granted,
+                                  isActive: true, size: 88,
+                                  animateCompletion: isCelebrating)
+        } else {
+            ZStack {
+                Circle()
+                    .fill(Color.black.opacity(0.32))
+                    .frame(width: 88, height: 88)
+                    .overlay {
+                        Circle().stroke(step.accent.opacity(0.34), lineWidth: 1)
+                    }
+                Image(systemName: step.symbol)
+                    .font(.system(size: 34, weight: .medium))
+                    .foregroundStyle(
+                        LinearGradient(colors: [.white, step.accent],
+                                       startPoint: .topLeading,
+                                       endPoint: .bottomTrailing)
+                    )
+                    .symbolRenderingMode(.monochrome)
+            }
+            .shadow(color: step.accent.opacity(isWorking ? 0.8 : 0.38),
+                    radius: isWorking ? 24 : 14)
         }
     }
 }

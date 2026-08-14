@@ -32,8 +32,7 @@ RevenueCat. There is no send counter. See
 ## Website
 
 The landing page is in `website/` and includes product, privacy and support
-pages. The current hosted preview is
-<https://airdropper-mac.cosmintrricaa.chatgpt.site>.
+pages. The production site is <https://airfliq.vercel.app>.
 
 ## Verification
 

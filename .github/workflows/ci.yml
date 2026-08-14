@@ -1,0 +1,44 @@
+name: AirFliq CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  mac-app:
+    name: Universal macOS app
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch RevenueCat SDK
+        run: ./scripts/fetch-revenuecat.sh
+      - name: Build ARM64 and Intel app
+        run: ./build.sh
+      - name: Verify universal binaries and signatures
+        run: |
+          lipo build/AirFliq.app/Contents/MacOS/AirFliq -verify_arch arm64 x86_64
+          lipo build/AirFliq.app/Contents/PlugIns/AirFliqFinder.appex/Contents/MacOS/AirFliqFinder -verify_arch arm64 x86_64
+          codesign --verify --deep --strict build/AirFliq.app
+
+  website:
+    name: Landing page
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint

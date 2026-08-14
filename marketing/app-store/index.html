@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AirFliq App Store Screenshots</title>
+  <style>
+    :root {
+      --bg: #06070b;
+      --ink: #f6f8ff;
+      --muted: #a1a9ba;
+      --line: rgba(255,255,255,.11);
+      --blue: #3c95ff;
+      --cyan: #63d8ff;
+      --violet: #8c5cff;
+      --green: #31d675;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--ink); }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+      font-kerning: normal;
+      text-rendering: geometricPrecision;
+      letter-spacing: .006em;
+    }
+    .slide {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: none;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 73% 52%, rgba(48,110,255,.19), transparent 34%),
+        radial-gradient(circle at 84% 76%, rgba(132,62,255,.15), transparent 30%),
+        linear-gradient(145deg, #080a10 0%, #05060a 58%, #0b0813 100%);
+    }
+    .slide.active { display: block; }
+    .noise {
+      position: absolute; inset: 0; opacity: .12; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");
+    }
+    .brand {
+      position: absolute; left: 152px; top: 112px; display: flex; align-items: center; gap: 24px;
+      font-size: 31px; font-weight: 740; letter-spacing: 0; z-index: 5;
+    }
+    .brand img { width: 68px; height: 68px; border-radius: 19px; box-shadow: 0 16px 45px rgba(51,111,255,.32); }
+    .copy { position: absolute; left: 152px; top: 360px; width: 1120px; z-index: 4; }
+    .kicker { color: #778196; font-size: 24px; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { font-size: 148px; line-height: .95; letter-spacing: -.025em; margin: 38px 0 38px; font-weight: 780; }
+    h1 em { font-style: normal; background: linear-gradient(100deg,var(--cyan),var(--blue) 48%,var(--violet)); -webkit-background-clip: text; color: transparent; }
+    .lead { max-width: 900px; color: var(--muted); font-size: 37px; line-height: 1.48; letter-spacing: .004em; }
+    .pill-row { display: flex; gap: 18px; margin-top: 54px; }
+    .pill { padding: 16px 24px; border: 1px solid var(--line); border-radius: 999px; color: #b7bfce; background: rgba(255,255,255,.035); font-size: 22px; }
+    .stage { position: absolute; right: 85px; top: 170px; width: 1430px; height: 1430px; }
+    .stage-glow { position: absolute; inset: 10%; border-radius: 50%; background: radial-gradient(circle,rgba(55,128,255,.25),rgba(116,72,255,.10) 45%,transparent 69%); filter: blur(32px); }
+
+    /* Slide 1 */
+    .s1 .copy { top: 390px; width: 1080px; }
+    .hero-icon { position: absolute; width: 640px; height: 640px; right: 315px; top: 250px; border-radius: 150px; filter: drop-shadow(0 80px 110px rgba(33,71,190,.38)); transform: rotate(4deg); }
+    .flight-card { position: absolute; width: 250px; height: 316px; border-radius: 42px; border: 2px solid rgba(255,255,255,.16); background: linear-gradient(150deg,rgba(255,255,255,.17),rgba(255,255,255,.035)); box-shadow: 0 40px 100px rgba(0,0,0,.34); }
+    .flight-card:before { content:""; position:absolute; left:42px; top:48px; width:166px; height:112px; border-radius:24px; background:rgba(108,159,255,.24); }
+    .flight-card:after { content:""; position:absolute; left:42px; bottom:64px; width:132px; height:16px; border-radius:12px; background:rgba(255,255,255,.24); box-shadow:0 33px rgba(255,255,255,.13); }
+    .fc1 { right: 840px; top: 800px; transform: rotate(-17deg) scale(.74); opacity:.34; }
+    .fc2 { right: 680px; top: 725px; transform: rotate(-10deg) scale(.84); opacity:.62; }
+    .shortcut { position:absolute; right:245px; bottom:178px; display:flex; gap:16px; padding:22px; border-radius:30px; border:2px solid var(--line); background:rgba(10,13,20,.85); box-shadow:0 30px 90px rgba(0,0,0,.42); }
+    .key { width:88px;height:82px;display:grid;place-items:center;border-radius:20px;font-size:35px;font-weight:700;background:linear-gradient(#313745,#161921);border:2px solid rgba(255,255,255,.16);box-shadow:0 9px 0 #07080c; }
+    .native-chip { position:absolute;right:980px;top:340px;padding:20px 28px;border-radius:999px;background:rgba(10,14,22,.76);border:2px solid var(--line);color:#aab3c5;font-size:23px; }
+    .native-chip b { color:#72deff; }
+
+    /* Slide 2 */
+    .s2 .copy { top: 330px; width: 1020px; }
+    .onboarding-frame { position:absolute;right:150px;top:210px;width:1270px;height:1290px;padding:42px 56px 56px;border-radius:72px;border:2px solid rgba(118,153,255,.24);background:radial-gradient(circle at 8% 0,rgba(29,125,255,.16),transparent 34%),radial-gradient(circle at 92% 100%,rgba(126,66,255,.14),transparent 36%),linear-gradient(145deg,#0c1221,#0c0c16 62%,#14101d);box-shadow:0 80px 180px rgba(0,0,0,.52),0 0 110px rgba(67,96,255,.13);transform:rotateY(-3deg) rotateX(1deg);overflow:hidden; }
+    .onboarding-frame:after { content:"";position:absolute;inset:0;background-image:radial-gradient(circle,rgba(94,137,255,.24) 1.5px,transparent 1.8px);background-size:52px 52px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.7),transparent 64%);opacity:.16;pointer-events:none; }
+    .retina-traffic { height:44px;display:flex;align-items:center;gap:13px;position:relative;z-index:3; }
+    .retina-traffic i { width:18px;height:18px;border-radius:50%;background:#ff5f57;box-shadow:0 0 18px rgba(255,95,87,.3); }
+    .retina-traffic i:nth-child(2),.retina-traffic i:nth-child(3) { background:#465165;box-shadow:none; }
+    .onboarding-ui { position:relative;z-index:2;height:calc(100% - 44px);padding:30px 12px 0; }
+    .onboarding-head { display:flex;align-items:center;gap:20px; }
+    .onboarding-head img { width:72px;height:72px;border-radius:20px;box-shadow:0 22px 55px rgba(50,112,255,.32); }
+    .onboarding-head strong { display:block;font-size:25px;letter-spacing:.17em; }.onboarding-head small{display:block;color:#8c96aa;font-size:20px;margin-top:5px}.onboarding-head b{margin-left:auto;color:#8d94a5;font:700 19px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.08em}.onboarding-head em{font-style:normal;color:#51596d;margin-left:22px;font:600 17px ui-monospace,SFMono-Regular,Menlo,monospace}
+    .route { display:grid;grid-template-columns:repeat(7,auto);align-items:start;margin:75px 28px 0; }
+    .route-step { width:104px;text-align:center;position:relative;z-index:2 }.route-step i{width:62px;height:62px;margin:auto;display:grid;place-items:center;border-radius:50%;border:3px dashed #556078;background:#0e1422;color:#79849a;font-style:normal;font-size:25px}.route-step span{display:block;margin-top:17px;color:#9ba4b7;font-size:19px;font-weight:700;white-space:nowrap}.route-step:first-child i{border-style:solid;border-color:#4ac9ff;background:linear-gradient(145deg,#163453,#101a2d);box-shadow:0 0 34px rgba(54,181,255,.23)}.route-step:first-child span{color:white}
+    .route-line { width:196px;height:55px;border-top:3px dashed rgba(89,115,175,.34);margin-top:31px;transform:rotate(-2deg) }.route-line:nth-of-type(4){transform:rotate(2deg)}
+    .setup-panel { position:absolute;left:22px;right:22px;top:345px;height:675px;border:2px solid rgba(255,255,255,.12);border-radius:54px;background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.035));box-shadow:inset 0 2px rgba(255,255,255,.05),0 46px 100px rgba(0,0,0,.3);display:grid;grid-template-columns:390px 1fr;align-items:center;padding:58px;overflow:hidden}.setup-panel:before{content:"";position:absolute;width:480px;height:480px;left:-80px;top:90px;border-radius:50%;background:radial-gradient(circle,rgba(48,175,255,.14),transparent 67%)}
+    .setup-orbit { position:relative;width:310px;height:310px;display:grid;place-items:center;margin:auto }.setup-orbit:before,.setup-orbit:after{content:"";position:absolute;border:2px dashed rgba(73,181,255,.25);border-radius:50%;inset:16px;animation:spin 16s linear infinite}.setup-orbit:after{inset:58px;border-color:rgba(119,89,255,.34);animation-direction:reverse;animation-duration:12s}.setup-orbit span{width:142px;height:142px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#1e4966,#111b30);border:2px solid rgba(88,199,255,.43);box-shadow:0 0 60px rgba(45,166,255,.18);font-size:62px}
+    .setup-copy { position:relative;z-index:2;padding-left:30px }.setup-copy .mini-kicker{color:#4bcfff;font-size:19px;letter-spacing:.16em;font-weight:760;text-transform:uppercase}.setup-copy h2{font-size:58px;line-height:1.02;letter-spacing:-.035em;margin:24px 0 22px}.setup-copy p{font-size:25px;line-height:1.5;color:#a2aaba;max-width:580px;margin:0}.setup-button{margin-top:42px;width:100%;height:88px;border-radius:28px;background:linear-gradient(105deg,#2bc5ff,#3881ff 48%,#7c48fa);display:flex;align-items:center;justify-content:center;gap:22px;font-size:25px;font-weight:750;box-shadow:0 24px 65px rgba(49,123,255,.27)}
+    .onboarding-foot { position:absolute;left:38px;right:38px;bottom:20px;display:flex;align-items:center;color:#697286;font-size:18px}.onboarding-foot span{display:flex;align-items:center;gap:12px}.onboarding-foot i{font-style:normal;color:#4ed4ff}.onboarding-foot b{margin-left:auto;font-weight:650}.onboarding-foot em{font-style:normal;margin-left:40px;color:#8e96aa}
+    .permission-callouts { margin-top:60px;display:grid;gap:22px;width:850px; }
+    .permission-callout { display:grid;grid-template-columns:54px 1fr;gap:20px;align-items:center;color:#c7ceda;font-size:27px; }
+    .permission-callout i { width:44px;height:44px;border:2px dashed #667185;border-radius:50%;display:grid;place-items:center;font-style:normal;color:var(--green); }
+    .permission-callout strong { color:white; }
+
+    /* Slide 3 */
+    .s3 .copy { top: 360px; width: 1000px; }
+    .drag-world { position:absolute;right:120px;top:230px;width:1430px;height:1300px; }
+    .file-tile { position:absolute;left:160px;top:300px;width:390px;height:450px;border-radius:48px;border:2px solid rgba(255,255,255,.13);background:linear-gradient(145deg,#151923,#0b0d13);box-shadow:0 60px 150px rgba(0,0,0,.5);display:flex;flex-direction:column;align-items:center;justify-content:center; }
+    .file-paper { width:190px;height:240px;border-radius:30px;background:linear-gradient(155deg,#ff7f70,#ef395a);box-shadow:0 35px 80px rgba(239,57,90,.22);display:grid;place-items:end center;padding-bottom:36px;font-size:32px;font-weight:800; }
+    .file-tile span { color:#abb4c5;font-size:28px;margin-top:32px; }
+    .cursor { position:absolute;left:630px;top:610px;width:80px;height:112px;background:white;clip-path:polygon(0 0,0 100%,27% 76%,45% 100%,58% 92%,40% 68%,76% 66%);filter:drop-shadow(0 12px 12px rgba(0,0,0,.5));transform:rotate(-12deg); }
+    .drag-path { position:absolute;left:500px;top:450px;width:410px;border-top:3px dashed rgba(92,183,255,.46);transform:rotate(-10deg); }
+    .drop-bubble { position:absolute;right:80px;top:345px;width:620px;height:350px;border:3px solid rgba(74,161,255,.68);border-radius:68px;background:rgba(20,25,36,.82);box-shadow:0 60px 150px rgba(0,0,0,.5),inset 0 2px rgba(255,255,255,.10),0 0 90px rgba(55,137,255,.13);display:flex;flex-direction:column;align-items:center;justify-content:center; }
+    .drop-bubble:before { content:"";position:absolute;inset:34px;border:2px solid rgba(80,177,255,.23);border-radius:48px; }
+    .drop-bubble img { width:122px;height:122px;border-radius:34px;z-index:2; }
+    .drop-bubble strong { font-size:36px;margin-top:25px;z-index:2; }.drop-bubble small{font-size:24px;color:#8791a5;margin-top:8px;z-index:2}
+    .success-bubble { top:810px;right:240px;width:520px;height:285px;border-color:rgba(49,214,117,.72); }
+    .success-check { width:92px;height:92px;border-radius:50%;background:var(--green);display:grid;place-items:center;font-size:58px;font-weight:800;box-shadow:0 0 70px rgba(49,214,117,.35); }
+    .success-bubble strong { margin-top:18px; }
+    .one-pulse { position:absolute;width:150px;height:150px;border:3px solid rgba(49,214,117,.24);border-radius:50%; }
+
+    /* Slide 4 */
+    .s4 .copy { top: 330px; width: 920px; }
+    .finder { position:absolute;right:100px;top:250px;width:1510px;height:1120px;border-radius:52px;border:2px solid rgba(255,255,255,.14);background:#11141c;overflow:hidden;box-shadow:0 80px 180px rgba(0,0,0,.55); }
+    .finder-bar { height:130px;border-bottom:2px solid var(--line);display:flex;align-items:center;padding:0 42px;color:#9ca5b8;font-size:28px; }
+    .traffic { display:flex;gap:18px;margin-right:auto; }.traffic i{width:26px;height:26px;border-radius:50%;background:#ff625d}.traffic i:nth-child(2){background:#f5be4f}.traffic i:nth-child(3){background:#5dc858}
+    .finder-title { margin:auto;transform:translateX(-70px); }
+    .finder-body { height:calc(100% - 130px);display:grid;grid-template-columns:300px 1fr; }.finder-side{border-right:2px solid var(--line);padding:60px 40px;display:grid;align-content:start;gap:36px}.finder-side i{height:18px;border-radius:10px;background:rgba(255,255,255,.07)}.finder-side i:nth-child(2){width:75%}.finder-side i:nth-child(4){width:84%}
+    .finder-files { padding:100px 85px;display:flex;gap:55px;align-items:flex-start; }.mini-file{width:230px;padding:36px 20px;border-radius:28px;text-align:center;color:#aab3c4;font-size:23px}.mini-file.selected{background:rgba(53,126,255,.18);outline:2px solid rgba(74,143,255,.48);color:white}.mini-paper{width:130px;height:160px;margin:auto auto 25px;border-radius:22px;background:linear-gradient(150deg,#59cfff,#3275ff);display:grid;place-items:end center;padding-bottom:22px;font-size:22px;font-weight:800}.mini-paper.red{background:linear-gradient(150deg,#ff8172,#ed395a)}
+    .context-menu { position:absolute;right:110px;top:390px;width:530px;padding:22px;border:2px solid rgba(255,255,255,.14);border-radius:34px;background:rgba(39,40,49,.96);box-shadow:0 45px 130px rgba(0,0,0,.6);font-size:27px; }
+    .context-menu div{padding:19px 28px;border-radius:18px;color:#d0d5df}.context-menu .dim{color:#8c94a5}.context-menu hr{border:0;border-top:2px solid rgba(255,255,255,.09);margin:12px 8px}.context-menu .airdrop{display:flex;align-items:center;gap:18px;background:linear-gradient(90deg,#316de8,#7547e8);color:white;font-weight:720}.context-menu img{width:42px;height:42px;border-radius:12px}
+
+    /* Slide 5 */
+    .s5 .copy { top: 300px; width: 1050px; }
+    .ways { position:absolute;right:120px;top:250px;width:1450px;height:1250px;display:grid;grid-template-columns:1fr 1fr;gap:34px; }
+    .way { position:relative;border:2px solid var(--line);border-radius:58px;padding:55px;background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.018));overflow:hidden;box-shadow:inset 0 2px rgba(255,255,255,.04); }
+    .way span{font-size:21px;color:#6f788b;font-weight:700;letter-spacing:.12em}.way h3{font-size:45px;margin:20px 0 10px;letter-spacing:-.012em}.way p{font-size:24px;color:#929bae;line-height:1.5;letter-spacing:.006em;max-width:500px}
+    .way-visual { position:absolute;right:45px;bottom:42px; }
+    .tiny-keys{display:flex;gap:10px}.tiny-keys i{width:72px;height:67px;border-radius:17px;background:#252a35;border:2px solid rgba(255,255,255,.12);display:grid;place-items:center;font-size:28px;font-style:normal;box-shadow:0 7px #08090d}
+    .tiny-menu{width:280px;padding:15px;border:2px solid var(--line);border-radius:24px;background:#22242c}.tiny-menu i{display:block;padding:14px 18px;border-radius:13px;font-style:normal;color:#8f98aa;font-size:19px}.tiny-menu i:last-child{background:linear-gradient(90deg,#346fe4,#7349df);color:white}
+    .tiny-drop{width:300px;height:185px;border:2px solid rgba(69,164,255,.45);border-radius:38px;background:#111722;display:grid;place-items:center}.tiny-drop img{width:88px;height:88px;border-radius:24px}
+    .tiny-status{width:300px;height:180px;display:flex;align-items:center;justify-content:center}.tiny-status img{width:100px;height:100px;border-radius:28px;box-shadow:0 25px 60px rgba(43,105,255,.3)}.tiny-status:after{content:"AirFliq";margin-left:24px;font-size:28px;font-weight:700}
+    .privacy-note { position:absolute;left:152px;bottom:170px;color:#788297;font-size:26px;display:flex;gap:30px;align-items:center}.privacy-note i{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 18px var(--green)}
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <section class="slide s1" data-slide="1">
+    <div class="noise"></div>
+    <div class="brand"><img src="assets/airfliq-icon.png" alt="">AirFliq</div>
+    <div class="copy">
+      <span class="kicker">AirDrop, accelerated</span>
+      <h1>AirDrop in<br><em>one move.</em></h1>
+      <p class="lead">Select in Finder. Press one shortcut. The native AirDrop panel is ready.</p>
+      <div class="pill-row"><span class="pill">macOS 13+</span><span class="pill">Apple Silicon</span><span class="pill">Intel</span></div>
+    </div>
+    <div class="stage">
+      <div class="stage-glow"></div>
+      <span class="native-chip"><b>Native</b> AirDrop service</span>
+      <div class="flight-card fc1"></div><div class="flight-card fc2"></div>
+      <img class="hero-icon" src="assets/airfliq-icon.png" alt="">
+      <div class="shortcut"><span class="key">⌃</span><span class="key">⌥</span><span class="key">A</span></div>
+    </div>
+  </section>
+
+  <section class="slide s2" data-slide="2">
+    <div class="noise"></div>
+    <div class="brand"><img src="assets/airfliq-icon.png" alt="">AirFliq</div>
+    <div class="copy">
+      <span class="kicker">Clear from the first launch</span>
+      <h1>You choose<br><em>the access.</em></h1>
+      <p class="lead">Every permission is explained, visible and reversible. No Full Disk Access.</p>
+      <div class="permission-callouts">
+        <div class="permission-callout"><i>✓</i><span><strong>Finder</strong> for the current selection</span></div>
+        <div class="permission-callout"><i>✓</i><span><strong>Folders</strong> chosen only by you</span></div>
+        <div class="permission-callout"><i>✓</i><span><strong>Right-click</strong> controlled by macOS</span></div>
+      </div>
+    </div>
+    <div class="onboarding-frame" aria-label="AirFliq setup window">
+      <div class="retina-traffic" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="onboarding-ui">
+        <div class="onboarding-head"><img src="assets/airfliq-icon.png" alt=""><div><strong>AIRFLIQ</strong><small>Select. Fliq. Sent.</small></div><b>0 / 4 READY</b><em>v1.0.0</em></div>
+        <div class="route"><div class="route-step"><i>1</i><span>Finder</span></div><div class="route-line"></div><div class="route-step"><i>2</i><span>Folders</span></div><div class="route-line"></div><div class="route-step"><i>3</i><span>Right-click</span></div><div class="route-line"></div><div class="route-step"><i>4</i><span>Shortcut</span></div></div>
+        <div class="setup-panel"><div class="setup-orbit"><span>↖</span></div><div class="setup-copy"><span class="mini-kicker">Finder selection</span><h2>Point. AirFliq sees it.</h2><p>Allow read-only access to the files currently selected in Finder.</p><div class="setup-button"><span>↗</span> Allow Finder Access</div></div></div>
+        <div class="onboarding-foot"><span><i>⌁</i> Drag target ready</span><b>50 sends free</b><em>Pro $4.99 lifetime</em></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide s3" data-slide="3">
+    <div class="noise"></div>
+    <div class="brand"><img src="assets/airfliq-icon.png" alt="">AirFliq</div>
+    <div class="copy">
+      <span class="kicker">A target when you need it</span>
+      <h1>Drag.<br>Drop.<br><em>Fly.</em></h1>
+      <p class="lead">Start dragging any file. A focused drop target appears beside your cursor, then confirms the handoff.</p>
+    </div>
+    <div class="drag-world">
+      <div class="stage-glow"></div>
+      <div class="file-tile"><div class="file-paper">PDF</div><span>Launch brief.pdf</span></div>
+      <div class="drag-path"></div><div class="cursor"></div>
+      <div class="drop-bubble"><img src="assets/airfliq-icon.png" alt=""><strong>Drop to AirDrop</strong><small>Launch brief.pdf</small></div>
+      <div class="drop-bubble success-bubble"><span class="one-pulse"></span><div class="success-check">✓</div><strong>Ready to fly</strong></div>
+    </div>
+  </section>
+
+  <section class="slide s4" data-slide="4">
+    <div class="noise"></div>
+    <div class="brand"><img src="assets/airfliq-icon.png" alt="">AirFliq</div>
+    <div class="copy">
+      <span class="kicker">Exactly where you expect it</span>
+      <h1>Right-click.<br><em>Done.</em></h1>
+      <p class="lead">AirDrop sits at the top level of Finder's context menu. No Share submenu. No hunting.</p>
+    </div>
+    <div class="finder">
+      <div class="finder-bar"><span class="traffic"><i></i><i></i><i></i></span><span class="finder-title">Launch Assets</span></div>
+      <div class="finder-body"><div class="finder-side"><i></i><i></i><i></i><i></i></div><div class="finder-files"><div class="mini-file selected"><div class="mini-paper">JPG</div>Campaign.jpg</div><div class="mini-file selected"><div class="mini-paper red">PDF</div>Brief.pdf</div></div></div>
+      <div class="context-menu"><div>Open</div><div class="dim">Quick Look 2 Items</div><hr><div class="airdrop"><img src="assets/airfliq-icon.png" alt="">Send with AirFliq</div><hr><div class="dim">Get Info</div></div>
+    </div>
+  </section>
+
+  <section class="slide s5" data-slide="5">
+    <div class="noise"></div>
+    <div class="brand"><img src="assets/airfliq-icon.png" alt="">AirFliq</div>
+    <div class="copy">
+      <span class="kicker">Built around your workflow</span>
+      <h1>Four ways.<br><em>One AirDrop.</em></h1>
+      <p class="lead">Use the shortcut, Finder menu, drag target or menu bar. Every route ends in Apple's familiar panel.</p>
+    </div>
+    <div class="ways">
+      <article class="way"><span>01</span><h3>Shortcut</h3><p>Your fastest path from a Finder selection.</p><div class="way-visual tiny-keys"><i>⌃</i><i>⌥</i><i>A</i></div></article>
+      <article class="way"><span>02</span><h3>Right-click</h3><p>A direct command in Finder's context menu.</p><div class="way-visual tiny-menu"><i>Open</i><i>Quick Look</i><i>✦ AirFliq</i></div></article>
+      <article class="way"><span>03</span><h3>Drag to send</h3><p>A beautiful target appears beside your cursor.</p><div class="way-visual tiny-drop"><img src="assets/airfliq-icon.png" alt=""></div></article>
+      <article class="way"><span>04</span><h3>Menu bar</h3><p>Click to send a selection or drop files on the icon.</p><div class="way-visual tiny-status"><img src="assets/airfliq-icon.png" alt=""></div></article>
+    </div>
+    <div class="privacy-note"><i></i>No account&nbsp;&nbsp;·&nbsp;&nbsp;No cloud upload&nbsp;&nbsp;·&nbsp;&nbsp;Native AirDrop</div>
+  </section>
+
+  <script>
+    const requested = new URLSearchParams(location.search).get("slide") || "1";
+    document.querySelector(`[data-slide="${requested}"]`)?.classList.add("active");
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+.DS_Store
+build/
+Vendor/RevenueCat/RevenueCat.xcframework/
+*.provisionprofile
+*.p8
+*.cer
+*.pkg
+*.dmg
+.env
+.env.*
+website/node_modules/
+website/.next/
+website/dist/

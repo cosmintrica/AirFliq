@@ -6,7 +6,8 @@ final class AirFliqMenuPanel {
 
     struct Snapshot {
         var isPro: Bool
-        var sendsRemaining: Int
+        var trialStatus: String
+        var trialExpired: Bool
         var price: String
         var currentShortcut: String
         var dragEnabled: Bool
@@ -131,9 +132,15 @@ final class AirFliqMenuPanel {
 
 @MainActor
 private final class MenuExperienceModel: ObservableObject {
-    @Published var snapshot = AirFliqMenuPanel.Snapshot(isPro: false, sendsRemaining: 50,
-                                                        price: "$4.99", currentShortcut: "⌃⌥A",
-                                                        dragEnabled: false, launchAtLogin: false)
+    @Published var snapshot = AirFliqMenuPanel.Snapshot(
+        isPro: false,
+        trialStatus: "7 days left in your trial",
+        trialExpired: false,
+        price: "$4.99",
+        currentShortcut: "⌃⌥A",
+        dragEnabled: false,
+        launchAtLogin: false
+    )
     @Published var visible = false
     var actions: AirFliqMenuPanel.Actions?
     var close: (() -> Void)?
@@ -246,10 +253,12 @@ private struct MenuExperienceView: View {
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .tracking(1.4)
                 Text(model.snapshot.isPro
-                     ? "Pro  •  Unlimited"
-                     : "\(model.snapshot.sendsRemaining) free sends remaining")
+                     ? "Pro  •  Lifetime"
+                     : model.snapshot.trialStatus)
                     .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(model.snapshot.isPro ? Color.airFliqGreen : .secondary)
+                    .foregroundStyle(model.snapshot.isPro
+                                     ? Color.airFliqGreen
+                                     : (model.snapshot.trialExpired ? Color.orange : .secondary))
             }
             Spacer()
             Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
@@ -289,7 +298,9 @@ private struct MenuExperienceView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Lifetime Pro")
                         .font(.system(size: 12, weight: .bold))
-                    Text("Unlimited sends for \(model.snapshot.price)")
+                    Text(model.snapshot.trialExpired
+                         ? "Unlock full access forever for \(model.snapshot.price)"
+                         : "Keep full access forever for \(model.snapshot.price)")
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(.secondary)
                 }

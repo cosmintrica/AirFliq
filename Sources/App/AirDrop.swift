@@ -1,5 +1,6 @@
 import Cocoa
 
+@MainActor
 enum AirDrop {
     private static var sessions: [SharingSession] = []
 
@@ -71,10 +72,12 @@ private final class SharingSession: NSObject, NSSharingServiceDelegate {
             finish(self)
             return
         }
-        Monetization.shared.recordSuccessfulSend()
         NotificationCenter.default.post(name: .airFliqSendSucceeded, object: nil)
-        let remaining = Monetization.shared.sendsRemaining
-        Toast.show("Sent with AirFliq", subtitle: Monetization.shared.isPro ? "Unlimited sending is active." : "\(remaining) free sends remaining.")
+        let access = Monetization.shared
+        Toast.show("Sent with AirFliq",
+                   subtitle: access.isPro
+                       ? "Lifetime Pro is active."
+                       : "Full trial active. \(access.trialStatusText).")
         finish(self)
     }
     func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: Error) {

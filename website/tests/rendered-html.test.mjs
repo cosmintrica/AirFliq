@@ -36,13 +36,13 @@ test("server-renders the complete AirFliq landing page", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>AirFliq - Select\. Fliq\. Sent\.<\/title>/i);
-  assert.match(html, /Select\./);
-  assert.match(html, /Fliq\. Sent\./);
-  assert.match(html, /50 successful sends free/);
+  assert.match(html, /AirDrop at the speed of/);
+  assert.match(html, /7 days/);
+  assert.match(html, /no send counter/i);
   assert.match(html, /\$4\.99/);
-  assert.match(html, /One shortcut/);
-  assert.match(html, /Right where you click/);
-  assert.match(html, /Drag\. Drop\. Fliq\./);
+  assert.match(html, /Your shortcut/);
+  assert.match(html, /target meets/);
+  assert.match(html, /Native where/);
   assert.match(html, /Privacy by architecture/);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site/);
@@ -80,7 +80,8 @@ test("contains product metadata and no starter preview artifacts", async () => {
   ]);
 
   assert.match(page, /AirFliq/);
-  assert.match(page, /50 successful sends free/);
+  assert.match(page, /7 days/);
+  assert.match(page, /no send counter/i);
   assert.match(layout, /AirFliq - Select\. Fliq\. Sent\./);
   assert.match(layout, /og-airfliq\.png/);
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview/);
@@ -90,5 +91,7 @@ test("contains product metadata and no starter preview artifacts", async () => {
   await Promise.all([
     access(new URL("../public/assets/airfliq-icon.png", import.meta.url)),
     access(new URL("../public/og-airfliq.png", import.meta.url)),
+    access(new URL("../public/screenshots/onboarding-ready.png", import.meta.url)),
+    access(new URL("../public/screenshots/onboarding-shortcut.png", import.meta.url)),
   ]);
 });

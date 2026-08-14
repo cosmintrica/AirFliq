@@ -3,6 +3,7 @@ import SwiftUI
 
 /// A non-activating magnetic target. AppKit owns drag routing while SwiftUI
 /// renders every visual state from one finite state machine.
+@MainActor
 final class DropBubble {
 
     private var panel: NSPanel?

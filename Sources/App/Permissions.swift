@@ -9,6 +9,7 @@ nonisolated enum PermissionState: Equatable, Sendable {
 
 /// Everything AirFliq needs macOS to allow, in one place.
 ///
+@MainActor
 enum Permissions {
 
     nonisolated static let extensionIdentifier = "com.cosmintrica.airfliq.finder"
@@ -366,7 +367,23 @@ enum Permissions {
     // MARK: - Finder extension
 
     nonisolated static func finderExtensionState() -> PermissionState {
+#if MAC_APP_STORE
         FIFinderSyncController.isExtensionEnabled ? .granted : .denied
+#else
+        // FinderSync's convenience property can stay false for an ad-hoc app
+        // launched outside /Applications even after PluginKit has enabled its
+        // embedded extension. PluginKit is the source Finder itself uses for
+        // local builds, so read the enabled marker from that registry too.
+        let registry = run("/usr/bin/pluginkit", [
+            "-m", "-A", "-D", "-v", "-i", extensionIdentifier,
+        ])
+        let registeredAsEnabled = registry.split(separator: "\n").contains { line in
+            let value = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            return value.hasPrefix("+") && value.contains(extensionIdentifier)
+        }
+        return registeredAsEnabled || FIFinderSyncController.isExtensionEnabled
+            ? .granted : .denied
+#endif
     }
 
     /// Registers and enables the extension without sending the user to System

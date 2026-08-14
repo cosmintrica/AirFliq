@@ -3,6 +3,7 @@ import Carbon.HIToolbox
 
 /// Global hotkey via Carbon. Unlike an NSEvent global monitor, this needs no
 /// Accessibility permission.
+@MainActor
 final class HotKey {
 
     private static var handlerInstalled = false

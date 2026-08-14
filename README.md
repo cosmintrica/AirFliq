@@ -16,7 +16,7 @@ ad-hoc signing is enough for interface testing, but macOS privacy grants may
 reset when the binary changes. Use a stable Apple Development signature for
 repeatable permission testing.
 
-Reset all three onboarding permissions and local send usage with:
+Reset all three onboarding permissions and start a fresh local trial with:
 
 ```bash
 ./reset-permissions.sh
@@ -24,8 +24,9 @@ Reset all three onboarding permissions and local send usage with:
 
 ## Monetization
 
-The first 50 successful sharing sessions are free. A non-consumable Lifetime Pro
-purchase unlocks unlimited sends for $4.99 through RevenueCat. See
+Every feature is available during a 7-day full-access trial. A non-consumable
+Lifetime Pro purchase keeps the complete app unlocked for $4.99 through
+RevenueCat. There is no send counter. See
 `docs/APP-STORE.md` for the App Store Connect and RevenueCat checklist.
 
 ## Website

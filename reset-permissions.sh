@@ -34,6 +34,12 @@ echo "▸ Resetting onboarding state"
 /usr/bin/defaults delete "$APP_ID" airfliq.onboarding.didRequestFinderExtension.v1 2>/dev/null || true
 /usr/bin/defaults delete "$APP_ID" selectedFolderBookmarks 2>/dev/null || true
 /usr/bin/defaults delete "$APP_ID" airfliq.successfulSends.v1 2>/dev/null || true
+/usr/bin/defaults delete "$APP_ID" airfliq.trial.startedAt.v1 2>/dev/null || true
+/usr/bin/defaults delete "$APP_ID" airfliq.trial.lastSeenAt.v1 2>/dev/null || true
+/usr/bin/security delete-generic-password -s com.cosmintrica.airfliq.trial.v1 \
+    -a started-at 2>/dev/null || true
+/usr/bin/security delete-generic-password -s com.cosmintrica.airfliq.trial.v1 \
+    -a last-seen-at 2>/dev/null || true
 /usr/bin/defaults delete "$APP_ID" shortcutConfigured.v2 2>/dev/null || true
 /usr/bin/defaults delete "$APP_ID" shortcutName 2>/dev/null || true
 /usr/bin/defaults delete "$APP_ID" shortcutKeyCode.v2 2>/dev/null || true
@@ -45,4 +51,4 @@ echo "▸ Resetting onboarding state"
 /usr/bin/defaults delete "$LEGACY_APP_ID" 2>/dev/null || true
 
 echo ""
-echo "✅ AirFliq will show all three permissions and the shortcut step as new on next launch."
+echo "✅ AirFliq will show every permission, shortcut step and a fresh 7-day trial on next launch."

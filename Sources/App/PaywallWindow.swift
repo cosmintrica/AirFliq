@@ -79,7 +79,7 @@ private struct AirFliqPaywallView: View {
                             .tracking(1.8)
                             .foregroundStyle(model.isPro ? Color.airFliqGreen : .airFliqCyan)
 
-                        Text(model.isPro ? "Every flight is yours." : "Send without limits.")
+                        Text(heroTitle)
                             .font(.system(size: 31, weight: .bold, design: .rounded))
                             .tracking(-0.55)
                             .fixedSize(horizontal: false, vertical: true)
@@ -87,7 +87,9 @@ private struct AirFliqPaywallView: View {
 
                         Text(model.isPro
                              ? "AirFliq Pro is active on this Apple Account."
-                             : "Your first 50 successful sends are free. Unlock every send after that with one purchase.")
+                             : (model.isTrialExpired
+                                ? "Your full trial has ended. Unlock AirFliq forever with one purchase."
+                                : "Every feature is open during your 7-day trial. Keep full access forever with one purchase."))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.secondary)
                             .lineSpacing(3)
@@ -196,10 +198,14 @@ private struct AirFliqPaywallView: View {
 
             Spacer()
 
-            Text(model.isPro ? "PRO ACTIVE" : "50 SENDS FREE")
+            Text(model.isPro
+                 ? "PRO ACTIVE"
+                 : (model.isTrialExpired ? "TRIAL ENDED" : "7-DAY FULL TRIAL"))
                 .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                 .tracking(0.7)
-                .foregroundStyle(model.isPro ? Color.airFliqGreen : .secondary)
+                .foregroundStyle(model.isPro
+                                 ? Color.airFliqGreen
+                                 : (model.isTrialExpired ? Color.orange : .secondary))
                 .padding(.horizontal, 11)
                 .frame(height: 27)
                 .background(Color.white.opacity(0.055), in: Capsule())
@@ -210,16 +216,20 @@ private struct AirFliqPaywallView: View {
     private var freeUsage: some View {
         VStack(spacing: 8) {
             HStack {
-                Text(model.isPro ? "LIFETIME ACCESS" : "FREE FLIGHT PATH")
+                Text(model.isPro ? "LIFETIME ACCESS" : "FULL ACCESS TRIAL")
                     .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                     .tracking(0.65)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(model.isPro
                      ? "UNLIMITED"
-                     : "\(model.sendCount) / \(Monetization.freeSendLimit) USED")
+                     : (model.isTrialExpired
+                        ? "ENDED"
+                        : "\(model.trialDaysRemaining) DAYS LEFT"))
                     .font(.system(size: 9.5, weight: .bold, design: .monospaced))
-                    .foregroundStyle(model.isPro ? Color.airFliqGreen : .secondary)
+                    .foregroundStyle(model.isPro
+                                     ? Color.airFliqGreen
+                                     : (model.isTrialExpired ? Color.orange : .secondary))
             }
 
             GeometryReader { proxy in
@@ -282,7 +292,11 @@ private struct AirFliqPaywallView: View {
     }
     private var usageProgress: CGFloat {
         if model.isPro { return 1 }
-        return min(1, CGFloat(model.sendCount) / CGFloat(Monetization.freeSendLimit))
+        return CGFloat(model.trialProgress)
+    }
+    private var heroTitle: String {
+        if model.isPro { return "Every flight is yours." }
+        return model.isTrialExpired ? "Keep AirFliq moving." : "Seven days. Every flight."
     }
     private var purchaseTitle: String {
         if model.isPro { return "Lifetime Pro is active" }
@@ -301,11 +315,15 @@ private struct AirFliqPaywallView: View {
         if model.isPro { return "Unlimited sending is synced with RevenueCat." }
         switch model.storeState {
         case .notConfigured:
-            return "Purchases are enabled in the Mac App Store build."
+            return model.isTrialExpired
+                ? "Purchases are enabled in the Mac App Store build."
+                : model.trialStatusText
         case .loading:
             return "Loading your localized App Store price..."
         case .ready:
-            return "\(model.sendsRemaining) successful sends remain before Pro."
+            return model.isTrialExpired
+                ? "Your trial is complete. Lifetime Pro is ready."
+                : model.trialStatusText
         case .failed(let message):
             return message
         }

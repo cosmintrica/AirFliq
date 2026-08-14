@@ -30,7 +30,7 @@ if [ "${SIGN_IDENTITY:-}" = "" ] || [ "${SIGN_IDENTITY:-}" = "-" ]; then
 fi
 
 echo "▸ Building with a real identity"
-SIGN_IDENTITY="$SIGN_IDENTITY" "$ROOT/build.sh"
+BUILD_CONFIGURATION=Release SIGN_IDENTITY="$SIGN_IDENTITY" "$ROOT/build.sh"
 
 echo "▸ Checking the hardened runtime took"
 codesign --display --verbose=2 "$APP" 2>&1 | grep -q "flags=.*runtime" \

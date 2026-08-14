@@ -19,6 +19,14 @@ SWIFT_6_FLAGS=(
     -warnings-as-errors
 )
 
+# `-default-isolation` was added after Swift 6 shipped. Keep the stricter
+# MainActor default on modern toolchains without breaking older Swift 6
+# compilers used by GitHub's macOS runners.
+if [ "${SWIFT_DEFAULT_ISOLATION:-auto}" != "off" ] && \
+        swiftc -help-hidden 2>&1 | grep -q -- "-default-isolation"; then
+    SWIFT_6_FLAGS+=(-default-isolation MainActor)
+fi
+
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 APP_STORE_BUILD="${APP_STORE_BUILD:-0}"
 APP_ENTITLEMENTS="${APP_ENTITLEMENTS:-}"
@@ -26,7 +34,47 @@ EXT_ENTITLEMENTS="${EXT_ENTITLEMENTS:-$ROOT/Resources/Ext.entitlements}"
 APP_PROFILE="${APP_PROFILE:-}"
 EXT_PROFILE="${EXT_PROFILE:-}"
 REVENUECAT_API_KEY="${REVENUECAT_API_KEY:-}"
+REVENUECAT_KEYCHAIN_SERVICE="${REVENUECAT_KEYCHAIN_SERVICE:-com.cosmintrica.airfliq.revenuecat.production}"
+BUILD_CONFIGURATION="${BUILD_CONFIGURATION:-Development}"
 SWIFT_DEFINES=()
+
+case "$BUILD_CONFIGURATION" in
+    Development)
+        SWIFT_BUILD_FLAGS=(-Onone -g -D DEBUG)
+        ;;
+    Release)
+        SWIFT_BUILD_FLAGS=(-O)
+        ;;
+    *)
+        echo "error: BUILD_CONFIGURATION must be Development or Release." >&2
+        exit 1
+        ;;
+esac
+
+# Keep the public SDK key out of source control. Local builds automatically use
+# the production Apple key saved by the setup process. CI can build without a
+# key and App Store builds require one explicitly in build-app-store.sh.
+if [ "$REVENUECAT_API_KEY" = "" ]; then
+    REVENUECAT_API_KEY="$(
+        security find-generic-password \
+            -s "$REVENUECAT_KEYCHAIN_SERVICE" \
+            -a AirFliq \
+            -w 2>/dev/null || true
+    )"
+fi
+
+case "$REVENUECAT_API_KEY" in
+    test_*)
+        echo "error: RevenueCat Test Store keys cannot be used with the precompiled XCFramework." >&2
+        echo "       Use the Apple public SDK key stored in Keychain." >&2
+        exit 1
+        ;;
+    appl_*|mac_*|"") ;;
+    *)
+        echo "error: unsupported RevenueCat SDK key format." >&2
+        exit 1
+        ;;
+esac
 if [ "$APP_STORE_BUILD" = "1" ]; then
     APP_ENTITLEMENTS="${APP_ENTITLEMENTS:-$ROOT/Resources/AppStore-App.entitlements}"
     SWIFT_DEFINES=(-D MAC_APP_STORE)
@@ -55,7 +103,7 @@ fi
 
 echo "▸ Generating icon"
 mkdir -p "$BUILD/iconset-tool"
-swiftc -O -target "$HOST_ARCH-apple-macos13.0" \
+swiftc "${SWIFT_BUILD_FLAGS[@]}" -target "$HOST_ARCH-apple-macos13.0" \
     "${SWIFT_6_FLAGS[@]}" \
     -module-cache-path "$BUILD/ModuleCache" \
     "$ROOT/Sources/Shared/AirDropIcon.swift" "$ROOT/Tools/MakeIcon.swift" \
@@ -68,6 +116,12 @@ if ! iconutil -c icns "$BUILD/AppIcon.iconset" \
 fi
 
 echo "▸ Building app"
+echo "  configuration: $BUILD_CONFIGURATION"
+if [ "$REVENUECAT_API_KEY" = "" ]; then
+    echo "  RevenueCat: not embedded"
+else
+    echo "  RevenueCat: Apple SDK key embedded from the environment or Keychain"
+fi
 APP_SLICES=()
 EXT_SLICES=()
 for ARCH in "${ARCHS[@]}"; do
@@ -76,10 +130,9 @@ for ARCH in "${ARCHS[@]}"; do
     mkdir -p "$ARCH_BUILD"
 
     echo "  • $ARCH"
-    swiftc -O -target "$TARGET" \
+    swiftc "${SWIFT_BUILD_FLAGS[@]}" -target "$TARGET" \
         "${SWIFT_6_FLAGS[@]}" \
         ${SWIFT_DEFINES[@]+"${SWIFT_DEFINES[@]}"} \
-        -default-isolation MainActor \
         -module-cache-path "$ARCH_BUILD/AppModuleCache" \
         -module-name AirFliq \
         -F "$(dirname "$REVENUECAT_FRAMEWORK")" \
@@ -90,7 +143,7 @@ for ARCH in "${ARCHS[@]}"; do
         -Xlinker -rpath -Xlinker @executable_path/../Frameworks
     APP_SLICES+=("$ARCH_BUILD/AirFliq")
 
-    swiftc -O -target "$TARGET" \
+    swiftc "${SWIFT_BUILD_FLAGS[@]}" -target "$TARGET" \
         "${SWIFT_6_FLAGS[@]}" \
         -module-cache-path "$ARCH_BUILD/ExtensionModuleCache" \
         -module-name AirFliqFinder \

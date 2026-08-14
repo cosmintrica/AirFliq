@@ -1,6 +1,7 @@
 import Cocoa
 import ServiceManagement
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
@@ -94,7 +95,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let revenue = Monetization.shared
         let snapshot = AirFliqMenuPanel.Snapshot(
             isPro: revenue.isPro,
-            sendsRemaining: revenue.sendsRemaining,
+            trialStatus: revenue.trialStatusText,
+            trialExpired: revenue.isTrialExpired,
             price: revenue.price,
             currentShortcut: Shortcut.current.name,
             dragEnabled: DragCatcher.shared.isEnabled,

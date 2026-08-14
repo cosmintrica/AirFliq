@@ -8,10 +8,10 @@ extension Notification.Name {
 }
 
 @MainActor
-final class Monetization: NSObject, PurchasesDelegate, ObservableObject {
+final class Monetization: NSObject, @preconcurrency PurchasesDelegate, ObservableObject {
     static let shared = Monetization()
-    static let freeSendLimit = 50
-    static let entitlementID = "pro"
+    static let trialDuration: TimeInterval = 7 * 24 * 60 * 60
+    static let entitlementID = "Pro"
     static let lifetimeProductID = "com.cosmintrica.airfliq.lifetime"
 
     enum StoreState: Equatable {
@@ -29,20 +29,48 @@ final class Monetization: NSObject, PurchasesDelegate, ObservableObject {
         case failed(String)
     }
 
-    private let sendCountKey = "airfliq.successfulSends.v1"
+    private let trialStartedAt: Date
     @Published private(set) var isPro = false
     @Published private(set) var package: Package?
     @Published private(set) var isConfigured = false
     @Published private(set) var storeState: StoreState = .notConfigured
-    @Published private(set) var sendCount = UserDefaults.standard.integer(
-        forKey: "airfliq.successfulSends.v1"
-    )
+    @Published private(set) var trialReferenceDate: Date
 
-    var sendsRemaining: Int { max(0, Self.freeSendLimit - sendCount) }
-    var canSend: Bool { isPro || sendsRemaining > 0 }
+    private override init() {
+        let trial = TrialPersistence.currentState()
+        trialStartedAt = trial.startedAt
+        trialReferenceDate = trial.referenceDate
+        super.init()
+    }
+
+    var trialEndDate: Date { trialStartedAt.addingTimeInterval(Self.trialDuration) }
+    var trialRemainingTime: TimeInterval {
+        max(0, trialEndDate.timeIntervalSince(trialReferenceDate))
+    }
+    var trialDaysRemaining: Int {
+        guard trialRemainingTime > 0 else { return 0 }
+        return max(1, Int(ceil(trialRemainingTime / (24 * 60 * 60))))
+    }
+    var trialProgress: Double {
+        min(1, max(0, trialReferenceDate.timeIntervalSince(trialStartedAt)
+                   / Self.trialDuration))
+    }
+    var isTrialExpired: Bool { trialRemainingTime <= 0 }
+    var trialStatusText: String {
+        if isTrialExpired { return "Trial ended" }
+        if trialRemainingTime < 24 * 60 * 60 {
+            let hours = max(1, Int(ceil(trialRemainingTime / (60 * 60))))
+            return hours == 1 ? "1 hour left in your trial"
+                              : "\(hours) hours left in your trial"
+        }
+        return trialDaysRemaining == 1 ? "1 day left in your trial"
+                                       : "\(trialDaysRemaining) days left in your trial"
+    }
+    var canSend: Bool { isPro || !isTrialExpired }
     var price: String { package?.localizedPriceString ?? "$4.99" }
 
     func configure() {
+        refreshTrialClock()
         guard !isConfigured else {
             refresh()
             return
@@ -64,13 +92,15 @@ final class Monetization: NSObject, PurchasesDelegate, ObservableObject {
     }
 
     func refresh() {
+        refreshTrialClock()
         guard isConfigured else { return }
         refreshCustomerInfo(fetchPolicy: .fetchCurrent)
         if package == nil { refreshOfferings() }
     }
 
     func resolveSendAccess(completion: @escaping (Bool) -> Void) {
-        guard !isPro, sendsRemaining == 0, isConfigured else {
+        refreshTrialClock()
+        guard !isPro, isTrialExpired, isConfigured else {
             completion(canSend)
             return
         }
@@ -83,13 +113,6 @@ final class Monetization: NSObject, PurchasesDelegate, ObservableObject {
             apply(info)
             completion(canSend)
         }
-    }
-
-    func recordSuccessfulSend() {
-        guard !isPro else { return }
-        sendCount = min(Self.freeSendLimit, sendCount + 1)
-        UserDefaults.standard.set(sendCount, forKey: sendCountKey)
-        NotificationCenter.default.post(name: .airFliqAccessChanged, object: nil)
     }
 
     func purchase(completion: @escaping (PurchaseOutcome) -> Void) {
@@ -142,6 +165,11 @@ final class Monetization: NSObject, PurchasesDelegate, ObservableObject {
     private func apply(_ info: CustomerInfo?) {
         guard let info else { return }
         isPro = info.entitlements.active[Self.entitlementID] != nil
+        notifyChanged()
+    }
+
+    private func refreshTrialClock() {
+        trialReferenceDate = TrialPersistence.currentState().referenceDate
         notifyChanged()
     }
 

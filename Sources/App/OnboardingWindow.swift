@@ -525,6 +525,7 @@ private struct OnboardingExperience: View {
                 FlightRoute(
                     states: model.states,
                     shortcutConfigured: model.shortcutConfigured,
+                    celebratingIndex: model.celebratingIndex,
                     activeIndex: model.showShortcutStage || model.showReadyStage
                         ? 3 : model.activeIndex,
                     onSelect: { index in
@@ -629,7 +630,7 @@ private struct OnboardingExperience: View {
 
             Spacer(minLength: 8)
 
-            Text("50 sends free  •  Pro $4.99 lifetime")
+            Text("7-day full trial  •  Pro $4.99 lifetime")
                 .font(.system(size: 10.5, weight: .medium))
                 .foregroundStyle(.tertiary)
 
@@ -818,6 +819,7 @@ private struct FlightRoute: View {
 
     let states: [PermissionState]
     let shortcutConfigured: Bool
+    let celebratingIndex: Int?
     let activeIndex: Int
     let onSelect: (Int) -> Void
 
@@ -862,7 +864,7 @@ private struct FlightRoute: View {
                             state: routeState(index),
                             isActive: activeIndex == index,
                             size: 32,
-                            animateCompletion: false
+                            animateCompletion: celebratingIndex == index
                         )
                     }
                     .buttonStyle(.plain)
@@ -1125,7 +1127,7 @@ private struct ShortcutConstellation: View {
     @State private var orbitItems: [Shortcut]
     @State private var swapFlight: ShortcutSwapFlight?
     @State private var swapProgress: CGFloat = 0
-    @State private var handoffProgress: CGFloat = 0
+    @State private var queuedShortcut: Shortcut?
 
     init(shortcut: Shortcut, active: Bool,
          onSelect: @escaping (Shortcut) -> Bool) {
@@ -1160,8 +1162,8 @@ private struct ShortcutConstellation: View {
                     .buttonStyle(.plain)
                     .offset(orbitOffset(slot: slot, time: time))
                     .opacity(swapFlight?.outgoing.id == item.id
-                             ? handoffProgress : 1)
-                    .allowsHitTesting(swapFlight == nil || handoffProgress >= 0.99)
+                             ? 0 : 1)
+                    .allowsHitTesting(swapFlight == nil)
                     .zIndex(2)
                 }
 
@@ -1175,33 +1177,30 @@ private struct ShortcutConstellation: View {
 
                 if let swapFlight {
                     let movingOffset = orbitOffset(slot: swapFlight.slot, time: time)
+                    let incomingOffset = flightOffset(base: movingOffset,
+                                                      progress: 1 - swapProgress,
+                                                      lane: 1)
+                    let outgoingOffset = flightOffset(base: movingOffset,
+                                                      progress: swapProgress,
+                                                      lane: -1)
 
                     ShortcutOrbitCard(shortcut: swapFlight.incoming,
                                       prominence: swapProgress)
-                        .offset(x: movingOffset.width * (1 - swapProgress),
-                                y: movingOffset.height * (1 - swapProgress))
-                        .rotation3DEffect(.degrees(-12 * (1 - swapProgress)),
-                                          axis: (x: 0.18, y: 1, z: 0))
-                        .opacity(1 - handoffProgress)
+                        .offset(incomingOffset)
                         .zIndex(12)
 
                     ShortcutOrbitCard(shortcut: swapFlight.outgoing,
                                       prominence: 1 - swapProgress)
-                        .offset(x: movingOffset.width * swapProgress,
-                                y: movingOffset.height * swapProgress)
-                        .rotation3DEffect(.degrees(10 * swapProgress),
-                                          axis: (x: 0.12, y: 1, z: 0))
-                        .opacity(1 - handoffProgress)
+                        .offset(outgoingOffset)
                         .zIndex(11)
                 }
 
-                // The destination card is present throughout the final
-                // handoff. Crossfading two geometrically identical cards hides
-                // the SwiftUI identity swap, so the animation cannot freeze
-                // and then snap a few pixels at its endpoint.
+                // The stable destination is swapped in only after the moving
+                // card reaches this exact geometry. There is deliberately no
+                // crossfade or settlement pause at the endpoint.
                 ShortcutOrbitCard(shortcut: displayedCenter, prominence: 1)
                     .scaleEffect(active ? 1 : 0.76)
-                    .opacity(swapFlight == nil ? 1 : handoffProgress)
+                    .opacity(swapFlight == nil ? 1 : 0)
                     .zIndex(10)
             }
         }
@@ -1222,14 +1221,27 @@ private struct ShortcutConstellation: View {
         return CGSize(width: cos(angle) * 65, height: sin(angle) * 65)
     }
 
+    private func flightOffset(base: CGSize,
+                              progress: CGFloat,
+                              lane: CGFloat) -> CGSize {
+        let clamped = min(max(progress, 0), 1)
+        let distance = max(hypot(base.width, base.height), 1)
+        let perpendicular = CGSize(width: -base.height / distance,
+                                   height: base.width / distance)
+        let arc = CGFloat(sin(Double(clamped) * .pi)) * 18 * lane
+        return CGSize(width: base.width * clamped + perpendicular.width * arc,
+                      height: base.height * clamped + perpendicular.height * arc)
+    }
+
     private func beginSwap(to incoming: Shortcut) {
         guard incoming.id != displayedCenter.id else { return }
 
-        // If the user changes again before the spring settles, complete the
-        // previous ownership swap first. This avoids stacked ghost cards.
-        swapFlight = nil
-        swapProgress = 0
-        handoffProgress = 0
+        // Preset buttons can be clicked faster than one flight. Queue only the
+        // latest choice so an in-flight card never gets replaced mid-frame.
+        if swapFlight != nil {
+            queuedShortcut = incoming
+            return
+        }
 
         let outgoing = displayedCenter
         let slot = orbitItems.firstIndex(where: { $0.id == incoming.id }) ?? 0
@@ -1245,30 +1257,28 @@ private struct ShortcutConstellation: View {
                                         slot: slot)
         swapFlight = flight
         DispatchQueue.main.async {
-            // A deterministic flight curve reaches its exact endpoint before
-            // the overlay is handed back to the stable center and orbit views.
-            // The former spring was still settling when its timeout fired,
-            // which caused the visible final-position jump.
-            withAnimation(.timingCurve(0.16, 0.82, 0.22, 1,
-                                       duration: 0.84)) {
+            // Only position, uniform scale and rotation animate. The card's
+            // layout stays fixed, so it cannot stretch or deform in flight.
+            withAnimation(.timingCurve(0.18, 0.80, 0.22, 1,
+                                       duration: 0.76)) {
                 swapProgress = 1
             }
         }
 
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 860_000_000)
-            guard swapFlight?.id == flight.id else { return }
-            withAnimation(.easeInOut(duration: 0.20)) {
-                handoffProgress = 1
-            }
-            try? await Task.sleep(nanoseconds: 230_000_000)
+            try? await Task.sleep(nanoseconds: 780_000_000)
             guard swapFlight?.id == flight.id else { return }
             var transaction = Transaction()
             transaction.disablesAnimations = true
             withTransaction(transaction) {
                 swapFlight = nil
                 swapProgress = 0
-                handoffProgress = 0
+            }
+
+            let next = queuedShortcut
+            queuedShortcut = nil
+            if let next, next.id != displayedCenter.id {
+                DispatchQueue.main.async { beginSwap(to: next) }
             }
         }
     }
@@ -1286,26 +1296,22 @@ private struct ShortcutOrbitCard: View {
     let prominence: CGFloat
 
     private var progress: CGFloat { min(max(prominence, 0), 1) }
+    private var cardScale: CGFloat { 0.50 + 0.50 * progress }
 
     var body: some View {
-        VStack(spacing: 8 * progress) {
+        VStack(spacing: 8) {
             Image(systemName: "keyboard.fill")
                 .font(.system(size: 25, weight: .medium))
-                .frame(height: 25 * progress)
-                .scaleEffect(0.55 + 0.45 * progress)
-                .opacity(progress)
+                .frame(height: 25)
             Text(shortcut.name)
-                .font(.system(size: 7.5 + 5.5 * progress,
-                              weight: .bold,
-                              design: .monospaced))
-                .foregroundStyle(Color.white.opacity(0.62 + 0.38 * progress))
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundStyle(Color.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.68)
         }
-        .frame(width: 50 + 55 * progress,
-               height: 24 + 62 * progress)
+        .frame(width: 105, height: 86)
         .background {
-            RoundedRectangle(cornerRadius: 7 + 17 * progress, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
                     LinearGradient(colors: [.white.opacity(0.075),
                                             .white.opacity(0.045)],
@@ -1313,8 +1319,7 @@ private struct ShortcutOrbitCard: View {
                                    endPoint: .bottomTrailing)
                 )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 7 + 17 * progress,
-                                     style: .continuous)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(LinearGradient(colors: [.airFliqBlue.opacity(0.34),
                                                       .airFliqViolet.opacity(0.22)],
                                              startPoint: .topLeading,
@@ -1323,14 +1328,16 @@ private struct ShortcutOrbitCard: View {
                 }
         }
         .overlay {
-            RoundedRectangle(cornerRadius: 7 + 17 * progress, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.white.opacity(0.10 * (1 - progress)), lineWidth: 1)
-            RoundedRectangle(cornerRadius: 7 + 17 * progress, style: .continuous)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.airFliqCyan.opacity(0.42 * progress),
                         lineWidth: 1 + 0.2 * progress)
         }
         .shadow(color: Color.airFliqBlue.opacity(0.42 * progress),
                 radius: 22 * progress)
+        .scaleEffect(cardScale)
+        .opacity(0.72 + 0.28 * progress)
         .compositingGroup()
     }
 }
@@ -1500,6 +1507,7 @@ private struct FlightPermissionGlyph: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var progress: CGFloat = 0
     @State private var hasPlayedCompletion = false
+    @State private var completionScale: CGFloat = 1
 
     var body: some View {
         Canvas { context, canvasSize in
@@ -1520,6 +1528,7 @@ private struct FlightPermissionGlyph: View {
             }
         }
         .frame(width: size, height: size)
+        .scaleEffect(completionScale)
         .shadow(color: state == .granted ? Color.airFliqGreen.opacity(0.52) : .clear,
                 radius: renderedProgress > 0.7 ? 11 : 0)
         .onAppear(perform: applyVisualPhase)
@@ -1544,15 +1553,26 @@ private struct FlightPermissionGlyph: View {
             hasPlayedCompletion = true
             runCompletion()
         } else {
+            if state != .granted { hasPlayedCompletion = false }
             progress = state == .granted ? 1 : 0
+            completionScale = 1
         }
     }
 
     private func runCompletion() {
         progress = 0
-        guard !reduceMotion else { progress = 1; return }
+        completionScale = 0.82
+        guard !reduceMotion else {
+            progress = 1
+            completionScale = 1
+            return
+        }
         DispatchQueue.main.async {
             withAnimation(.linear(duration: 1.72)) { progress = 1 }
+            withAnimation(.spring(response: 0.74, dampingFraction: 0.56)
+                .delay(1.12)) {
+                completionScale = 1
+            }
         }
     }
 

@@ -5,6 +5,7 @@ import QuartzCore
 ///
 /// Core Animation keeps these effects smooth without keeping a 60 fps timer
 /// alive while the app is idle.
+@MainActor
 enum Motion {
 
     static let easeOut = CAMediaTimingFunction(controlPoints: 0.16, 1, 0.3, 1)

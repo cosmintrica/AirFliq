@@ -64,8 +64,8 @@ export default function PrivacyPage() {
           <h2>Data collection</h2>
           <p>
             AirFliq does not collect file names, file contents or advertising
-            identifiers. Preferences and the successful free-send count remain
-            locally on your Mac.
+            identifiers. Preferences and the trial start date remain locally on
+            your Mac.
           </p>
         </section>
 

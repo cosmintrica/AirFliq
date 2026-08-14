@@ -3,12 +3,12 @@
 ## Product model
 
 - Free download on the Mac App Store.
-- 50 successful AirDrop sharing sessions are free.
-- Cancels, validation errors and failed transfers do not consume a send.
+- Every feature is unlocked during a 7-day app-managed trial.
+- The trial is based on elapsed time and does not count send attempts.
 - `AirFliq Pro` is a non-consumable Lifetime unlock at $4.99.
-- RevenueCat entitlement: `pro`.
+- RevenueCat entitlement: `Pro`.
 - Suggested product identifier: `com.cosmintrica.airfliq.lifetime`.
-- Suggested offering: `default`, with the Lifetime product attached.
+- RevenueCat offering: `airfliq`, with the Lifetime product attached.
 
 Apple processes payment, VAT or sales tax, refunds and customer receipts for
 Mac App Store purchases. RevenueCat synchronizes entitlement state and purchase
@@ -21,7 +21,7 @@ the App Store build.
 2. Finder extension ID `com.cosmintrica.airfliq.finder`.
 3. A non-consumable in-app purchase using the product ID above.
 4. A RevenueCat project linked to the App Store Connect app.
-5. RevenueCat entitlement `pro`, offering `default`, and Lifetime package.
+5. RevenueCat entitlement `Pro`, offering `airfliq`, and Lifetime package.
 6. App Store Connect In-App Purchase key uploaded to RevenueCat.
 
 The public RevenueCat macOS SDK key is injected at build time. Never commit it

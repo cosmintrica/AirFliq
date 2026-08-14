@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "AirFliq - Select. Fliq. Sent.",
-    description: "Your first 50 successful sends are free. Lifetime Pro is $4.99.",
+    description: "Try every AirFliq feature free for 7 days. Lifetime Pro is $4.99.",
     type: "website",
     images: [
       {
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "AirFliq - Select. Fliq. Sent.",
-    description: "Your first 50 successful sends are free. Lifetime Pro is $4.99.",
+    description: "Try every AirFliq feature free for 7 days. Lifetime Pro is $4.99.",
     images: ["/og-airfliq.png"],
   },
 };

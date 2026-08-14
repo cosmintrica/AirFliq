@@ -5,6 +5,7 @@ import AppKit
 /// Only mouse events are observed. Global *keyboard* monitoring is what requires
 /// the Accessibility permission - mouse monitoring does not, so this costs the
 /// user nothing to turn on.
+@MainActor
 final class DragCatcher {
 
     static let shared = DragCatcher()
@@ -87,8 +88,8 @@ final class DragCatcher {
         // If a mouse-up is ever missed - spaces switch, app crash mid-drag - the
         // bubble should not be left stranded on screen.
         safetyTimer?.invalidate()
-        safetyTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { [weak self] _ in
-            Task { @MainActor [weak self] in self?.endSession(force: true) }
+        safetyTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { _ in
+            Task { @MainActor in DragCatcher.shared.endSession(force: true) }
         }
     }
 

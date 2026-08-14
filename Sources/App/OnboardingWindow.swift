@@ -1462,20 +1462,27 @@ private struct StepConstellation: View {
     }
 
     private func orbitParticles(at time: TimeInterval) -> some View {
-        Canvas { context, size in
+        let particleColor = step.accent.opacity(0.55)
+        return Canvas { context, size in
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
             for index in 0..<7 {
-                let speed = isWorking ? 1.15 : 0.34
-                let angle = time * speed + Double(index) * (.pi * 2 / 7)
-                let radius = 64 + CGFloat(index % 3) * 9
-                let point = CGPoint(x: center.x + cos(angle) * radius,
-                                    y: center.y + sin(angle) * radius)
-                let rect = CGRect(x: point.x - 1.5, y: point.y - 1.5,
-                                  width: 3, height: 3)
+                let rect = particleRect(index: index, time: time, center: center)
                 context.fill(Path(ellipseIn: rect),
-                             with: .color(step.accent.opacity(0.55)))
+                             with: .color(particleColor))
             }
         }
+    }
+
+    private func particleRect(index: Int,
+                              time: TimeInterval,
+                              center: CGPoint) -> CGRect {
+        let speed: Double = isWorking ? 1.15 : 0.34
+        let spacing: Double = .pi * 2.0 / 7.0
+        let angle: Double = time * speed + Double(index) * spacing
+        let radius: CGFloat = 64.0 + CGFloat(index % 3) * 9.0
+        let x = center.x + CGFloat(cos(angle)) * radius
+        let y = center.y + CGFloat(sin(angle)) * radius
+        return CGRect(x: x - 1.5, y: y - 1.5, width: 3, height: 3)
     }
 
     private var constellationGlow: some View {

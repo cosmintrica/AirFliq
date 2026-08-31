@@ -164,22 +164,32 @@ if [ "$ALLOW_ADHOC" = "0" ]; then
     APP_PROFILE="$APP/Contents/embedded.provisionprofile"
     EXT_PROFILE="$EXT/Contents/embedded.provisionprofile"
     [ -f "$APP_PROFILE" ] || fail "app provisioning profile is missing"
-    [ -f "$EXT_PROFILE" ] || fail "extension provisioning profile is missing"
 
     APP_PROFILE_PLIST="$TEMP_DIR/app-profile.plist"
-    EXT_PROFILE_PLIST="$TEMP_DIR/extension-profile.plist"
     /usr/bin/security cms -D -i "$APP_PROFILE" >"$APP_PROFILE_PLIST"
-    /usr/bin/security cms -D -i "$EXT_PROFILE" >"$EXT_PROFILE_PLIST"
 
-    /usr/bin/python3 - "$APP_PROFILE_PLIST" "$EXT_PROFILE_PLIST" <<'PY'
+    PROFILE_ARGUMENTS=(
+        "$APP_PROFILE_PLIST"
+        "com.cosmintrica.airfliq"
+    )
+    if [ -f "$EXT_PROFILE" ]; then
+        EXT_PROFILE_PLIST="$TEMP_DIR/extension-profile.plist"
+        /usr/bin/security cms -D -i "$EXT_PROFILE" >"$EXT_PROFILE_PLIST"
+        PROFILE_ARGUMENTS+=(
+            "$EXT_PROFILE_PLIST"
+            "com.cosmintrica.airfliq.finder"
+        )
+    fi
+
+    /usr/bin/python3 - "${PROFILE_ARGUMENTS[@]}" <<'PY'
 import datetime
 import plistlib
 import sys
 
-expected = (
-    (sys.argv[1], "com.cosmintrica.airfliq"),
-    (sys.argv[2], "com.cosmintrica.airfliq.finder"),
-)
+arguments = sys.argv[1:]
+if len(arguments) % 2:
+    raise SystemExit("error: malformed provisioning profile arguments")
+expected = tuple(zip(arguments[0::2], arguments[1::2]))
 teams = set()
 now = datetime.datetime.now(datetime.timezone.utc)
 
@@ -230,6 +240,16 @@ PY
         fail "app and extension signing teams differ"
     [ "$SIGNING_TEAM" = "$PROFILE_TEAM" ] || \
         fail "certificate team and provisioning profile team differ"
+    [ "$(entitlement_value "$APP_ENTITLEMENTS" com.apple.application-identifier || true)" = \
+        "$SIGNING_TEAM.com.cosmintrica.airfliq" ] || \
+        fail "signed app identifier entitlement does not match its bundle ID"
+    [ "$(entitlement_value "$EXT_ENTITLEMENTS" com.apple.application-identifier || true)" = \
+        "$SIGNING_TEAM.com.cosmintrica.airfliq.finder" ] || \
+        fail "signed extension identifier entitlement does not match its bundle ID"
+    [ "$(entitlement_value "$APP_ENTITLEMENTS" com.apple.developer.team-identifier || true)" = \
+        "$SIGNING_TEAM" ] || fail "signed app team entitlement is incorrect"
+    [ "$(entitlement_value "$EXT_ENTITLEMENTS" com.apple.developer.team-identifier || true)" = \
+        "$SIGNING_TEAM" ] || fail "signed extension team entitlement is incorrect"
     case "$APP_AUTHORITY" in
         "Apple Distribution:"*|"3rd Party Mac Developer Application:"*) ;;
         *) fail "app is not signed with an App Store distribution certificate: $APP_AUTHORITY" ;;

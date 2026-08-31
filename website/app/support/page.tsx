@@ -5,7 +5,12 @@ import Image from "next/image";
 export const metadata: Metadata = {
   title: "Support - AirFliq",
   description: "Setup, purchases and troubleshooting help for AirFliq on macOS.",
+  alternates: {
+    canonical: "/support",
+  },
 };
+
+const githubIssues = "https://github.com/cosmintrica/AirFliq/issues";
 
 const items = [
   ["Finder access", "Open Setup & Permissions, choose Grant, then allow AirFliq under Privacy & Security > Automation."],
@@ -51,19 +56,25 @@ export default function SupportPage() {
         </div>
 
         <section className="legal-section">
-          <h2>Clean first-run test</h2>
+          <h2>Start setup again</h2>
           <p>
-            Quit AirFliq, run <strong>reset-permissions.sh</strong> from the
-            downloaded project build, and launch the app again. All three setup
-            items should return to their initial state.
+            Open Setup &amp; Permissions from the menu bar to review each live
+            permission, choose different folders, or select a new global
+            shortcut. AirFliq keeps the setup window open while macOS presents
+            its permission controls.
           </p>
         </section>
 
         <section className="legal-section">
-          <h2>Before launch</h2>
+          <h2>Still need help?</h2>
           <p>
-            A dedicated support email will be published here and in the Mac App
-            Store listing before the app goes on sale.
+            Open a ticket on the{" "}
+            <a href={githubIssues} target="_blank" rel="noreferrer">
+              AirFliq support tracker
+            </a>{" "}
+            with your macOS version, the AirFliq version shown in About, and the
+            step that did not complete. Never attach private files, purchase
+            credentials or Apple Account details.
           </p>
         </section>
       </article>

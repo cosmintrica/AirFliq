@@ -44,6 +44,10 @@ test("server-renders the complete AirFliq landing page", async () => {
   assert.match(html, /target meets/);
   assert.match(html, /Native where/);
   assert.match(html, /Privacy by architecture/);
+  assert.match(html, /View on GitHub/);
+  assert.match(html, /Mac App Store/);
+  assert.match(html, /Release in progress/);
+  assert.doesNotMatch(html, /Download (?:on|from) the Mac App Store/i);
   assert.doesNotMatch(html, developmentPreviewMeta);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site/);
   assert.doesNotMatch(html, /—|–/);
@@ -65,10 +69,21 @@ test("renders launch-ready privacy and support pages", async () => {
 
   assert.match(privacy, /Privacy, without/);
   assert.match(privacy, /RevenueCat/);
+  assert.match(privacy, /App Functionality/);
+  assert.match(privacy, /RevenueCat Analytics/);
+  assert.match(privacy, /anonymous App User ID/);
+  assert.match(privacy, /does not link .* to your identity/s);
+  assert.match(privacy, /does not use this data to track you across apps or websites/s);
   assert.match(privacy, /limited to folders you explicitly choose/);
+  assert.match(privacy, /rel="canonical" href="https:\/\/airfliq\.vercel\.app\/privacy"/);
+  assert.doesNotMatch(privacy, /trial start date remain locally/i);
+  assert.doesNotMatch(privacy, /analytics profile/i);
   assert.match(support, /Back to flying/);
   assert.match(support, /Restore Pro/);
   assert.match(support, /Right-click menu/);
+  assert.match(support, /rel="canonical" href="https:\/\/airfliq\.vercel\.app\/support"/);
+  assert.match(support, /AirFliq support tracker/);
+  assert.doesNotMatch(support, /dedicated support email will be published/i);
   assert.doesNotMatch(`${privacy}${support}`, /—|–/);
 });
 
@@ -84,6 +99,8 @@ test("contains product metadata and no starter preview artifacts", async () => {
   assert.match(page, /no send counter/i);
   assert.match(layout, /AirFliq - Select\. Fliq\. Sent\./);
   assert.match(layout, /og-airfliq\.png/);
+  assert.match(layout, /https:\/\/airfliq\.vercel\.app/);
+  assert.doesNotMatch(layout, /airdropper-mac|chatgpt\.site/);
   assert.doesNotMatch(page, /_sites-preview|SkeletonPreview/);
   assert.doesNotMatch(layout, /codex-preview|_sites-preview/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);

@@ -1,5 +1,7 @@
 # AirFliq
 
+[Website](https://airfliq.vercel.app) | [Privacy](https://airfliq.vercel.app/privacy) | [Support](https://airfliq.vercel.app/support) | [GitHub](https://github.com/cosmintrica/AirFliq)
+
 AirFliq is a native macOS utility that prepares Finder selections for Apple's
 AirDrop panel from a shortcut, menu bar icon, Finder context menu, or animated
 drag target.
@@ -16,7 +18,8 @@ ad-hoc signing is enough for interface testing, but macOS privacy grants may
 reset when the binary changes. Use a stable Apple Development signature for
 repeatable permission testing.
 
-Reset all three onboarding permissions and start a fresh local trial with:
+Reset the three macOS onboarding permissions and the development-only local
+trial fallback with:
 
 ```bash
 ./reset-permissions.sh
@@ -24,10 +27,13 @@ Reset all three onboarding permissions and start a fresh local trial with:
 
 ## Monetization
 
-Every feature is available during a 7-day full-access trial. A non-consumable
-Lifetime Pro purchase keeps the complete app unlocked for $4.99 through
-RevenueCat. There is no send counter. See
-`docs/APP-STORE.md` for the App Store Connect and RevenueCat checklist.
+The Mac App Store build lets the user explicitly start a free 7-day full-access
+trial. It never renews and never charges automatically. A non-consumable
+Lifetime Pro purchase keeps the complete app unlocked at the storefront's
+localized one-time price through RevenueCat. There is no send counter. The Mac
+App Store release is in progress; production purchase verification remains part
+of the release checklist. See `docs/APP-STORE.md` for the App Store Connect and
+RevenueCat checklist.
 
 ## Website
 
@@ -38,7 +44,7 @@ pages. The production site is <https://airfliq.vercel.app>.
 
 GitHub Actions rebuilds the universal Mac app and validates the landing page on
 every push and pull request. The App Store screenshots in
-`marketing/app-store/output/` are rendered at 2880 by 1800 pixels from the
+`marketing/app-store/final/` are rendered at 2880 by 1800 pixels from the
 matching AirFliq source artwork.
 
 AirDrop is a trademark of Apple Inc. AirFliq is an independent product and is

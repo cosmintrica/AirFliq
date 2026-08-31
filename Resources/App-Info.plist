@@ -32,6 +32,8 @@
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
     <key>NSAppleEventsUsageDescription</key>
     <string>AirFliq reads your Finder selection so it can prepare those files for the system AirDrop panel.</string>
     <key>CFBundleDocumentTypes</key>

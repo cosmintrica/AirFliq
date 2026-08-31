@@ -12,19 +12,26 @@ REVENUECAT_FRAMEWORK="$ROOT/Vendor/RevenueCat/RevenueCat.xcframework/macos-arm64
 HOST_ARCH="$(uname -m)"
 ARCHS=(arm64 x86_64)
 
-SWIFT_6_FLAGS=(
+SWIFT_6_BASE_FLAGS=(
     -swift-version 6
     -strict-concurrency=complete
     -warn-concurrency
     -warnings-as-errors
 )
 
+APP_SWIFT_6_FLAGS=("${SWIFT_6_BASE_FLAGS[@]}")
+EXT_SWIFT_6_FLAGS=("${SWIFT_6_BASE_FLAGS[@]}")
+
 # `-default-isolation` was added after Swift 6 shipped. Keep the stricter
 # MainActor default on modern toolchains without breaking older Swift 6
 # compilers used by GitHub's macOS runners.
 if [ "${SWIFT_DEFAULT_ISOLATION:-auto}" != "off" ] && \
         swiftc -help-hidden 2>&1 | grep -q -- "-default-isolation"; then
-    SWIFT_6_FLAGS+=(-default-isolation MainActor)
+    # AppKit application code is main-actor isolated by default. FinderSync's
+    # Objective-C overrides are explicitly nonisolated in the macOS SDK, so the
+    # extension needs the matching default to remain a valid Swift 6 override.
+    APP_SWIFT_6_FLAGS+=(-default-isolation MainActor)
+    EXT_SWIFT_6_FLAGS+=(-default-isolation nonisolated)
 fi
 
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
@@ -36,7 +43,22 @@ EXT_PROFILE="${EXT_PROFILE:-}"
 REVENUECAT_API_KEY="${REVENUECAT_API_KEY:-}"
 REVENUECAT_KEYCHAIN_SERVICE="${REVENUECAT_KEYCHAIN_SERVICE:-com.cosmintrica.airfliq.revenuecat.production}"
 BUILD_CONFIGURATION="${BUILD_CONFIGURATION:-Development}"
+MARKETING_VERSION="${MARKETING_VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ROOT/Resources/App-Info.plist")}"
+BUILD_NUMBER="${BUILD_NUMBER:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ROOT/Resources/App-Info.plist")}"
 SWIFT_DEFINES=()
+
+if [ "${MARKETING_CAPTURE:-0}" = "1" ]; then
+    SWIFT_DEFINES+=(-D AIRFLIQ_MARKETING_CAPTURE)
+fi
+
+if [[ ! "$MARKETING_VERSION" =~ ^[0-9]+([.][0-9]+){0,2}$ ]]; then
+    echo "error: MARKETING_VERSION must be a numeric App Store version such as 1.0.0." >&2
+    exit 1
+fi
+if [[ ! "$BUILD_NUMBER" =~ ^[0-9]+([.][0-9]+){0,2}$ ]]; then
+    echo "error: BUILD_NUMBER must contain one to three integers, such as 1 or 1.2.3." >&2
+    exit 1
+fi
 
 case "$BUILD_CONFIGURATION" in
     Development)
@@ -77,7 +99,7 @@ case "$REVENUECAT_API_KEY" in
 esac
 if [ "$APP_STORE_BUILD" = "1" ]; then
     APP_ENTITLEMENTS="${APP_ENTITLEMENTS:-$ROOT/Resources/AppStore-App.entitlements}"
-    SWIFT_DEFINES=(-D MAC_APP_STORE)
+    SWIFT_DEFINES+=(-D MAC_APP_STORE)
 else
     APP_ENTITLEMENTS="${APP_ENTITLEMENTS:-$ROOT/Resources/App.entitlements}"
 fi
@@ -104,7 +126,7 @@ fi
 echo "▸ Generating icon"
 mkdir -p "$BUILD/iconset-tool"
 swiftc "${SWIFT_BUILD_FLAGS[@]}" -target "$HOST_ARCH-apple-macos13.0" \
-    "${SWIFT_6_FLAGS[@]}" \
+    "${APP_SWIFT_6_FLAGS[@]}" \
     -module-cache-path "$BUILD/ModuleCache" \
     "$ROOT/Sources/Shared/AirDropIcon.swift" "$ROOT/Tools/MakeIcon.swift" \
     -o "$BUILD/iconset-tool/makeicon" -framework Cocoa
@@ -131,7 +153,7 @@ for ARCH in "${ARCHS[@]}"; do
 
     echo "  • $ARCH"
     swiftc "${SWIFT_BUILD_FLAGS[@]}" -target "$TARGET" \
-        "${SWIFT_6_FLAGS[@]}" \
+        "${APP_SWIFT_6_FLAGS[@]}" \
         ${SWIFT_DEFINES[@]+"${SWIFT_DEFINES[@]}"} \
         -module-cache-path "$ARCH_BUILD/AppModuleCache" \
         -module-name AirFliq \
@@ -144,7 +166,7 @@ for ARCH in "${ARCHS[@]}"; do
     APP_SLICES+=("$ARCH_BUILD/AirFliq")
 
     swiftc "${SWIFT_BUILD_FLAGS[@]}" -target "$TARGET" \
-        "${SWIFT_6_FLAGS[@]}" \
+        "${EXT_SWIFT_6_FLAGS[@]}" \
         -module-cache-path "$ARCH_BUILD/ExtensionModuleCache" \
         -module-name AirFliqFinder \
         -parse-as-library \
@@ -168,6 +190,10 @@ echo "  arm64 + x86_64 verified"
 echo "▸ Copying plists"
 cp "$ROOT/Resources/App-Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/Ext-Info.plist" "$EXT/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MARKETING_VERSION" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MARKETING_VERSION" "$EXT/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$EXT/Contents/Info.plist"
 cp "$ROOT/Resources/PrivacyInfo.xcprivacy" "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
 cp -R "$REVENUECAT_FRAMEWORK" "$APP/Contents/Frameworks/RevenueCat.framework"
 if [ "$REVENUECAT_API_KEY" != "" ]; then

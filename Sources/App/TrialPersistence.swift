@@ -1,37 +1,96 @@
 import Foundation
 import Security
 
-/// Persists the full-access trial outside ordinary preferences so reinstalling
-/// the app does not silently create a new trial. A last-seen timestamp also
-/// prevents moving the system clock backwards from extending access.
+/// Keeps the trusted App Store trial clock separate from the local development
+/// fallback. The App Store path never creates a start date. Its start date must
+/// always be supplied by a verified RevenueCat non-subscription transaction.
 enum TrialPersistence {
     struct State {
-        let startedAt: Date
+        let startedAt: Date?
         let referenceDate: Date
     }
 
-    private static let service = "com.cosmintrica.airfliq.trial.v1"
-    private static let startedAccount = "started-at"
+    private static let verifiedService = "com.cosmintrica.airfliq.trial.verified.v2"
     private static let lastSeenAccount = "last-seen-at"
-    private static let startedFallbackKey = "airfliq.trial.startedAt.v1"
-    private static let lastSeenFallbackKey = "airfliq.trial.lastSeenAt.v1"
 
-    static func currentState() -> State {
+#if !MAC_APP_STORE
+    private static let developmentService = "com.cosmintrica.airfliq.trial.development.v2"
+    private static let startedAccount = "started-at"
+    private static let startedFallbackKey = "airfliq.trial.development.startedAt.v2"
+    private static let lastSeenFallbackKey = "airfliq.trial.development.lastSeenAt.v2"
+
+    /// Local, testable fallback for development builds. This preserves the
+    /// existing developer experience by starting a local trial on first use.
+    /// It is never called by a `MAC_APP_STORE` build.
+    static func currentDevelopmentState() -> State {
         let wallClock = Date()
-        let startedAt = readDate(account: startedAccount,
+        let startedAt = readDate(service: developmentService,
+                                 account: startedAccount,
                                  fallbackKey: startedFallbackKey) ?? wallClock
-        let lastSeen = readDate(account: lastSeenAccount,
+        let lastSeen = readDate(service: developmentService,
+                                account: lastSeenAccount,
                                 fallbackKey: lastSeenFallbackKey) ?? wallClock
         let referenceDate = max(max(wallClock, lastSeen), startedAt)
 
-        writeDate(startedAt, account: startedAccount,
+        writeDate(startedAt,
+                  service: developmentService,
+                  account: startedAccount,
                   fallbackKey: startedFallbackKey)
-        writeDate(referenceDate, account: lastSeenAccount,
+        writeDate(referenceDate,
+                  service: developmentService,
+                  account: lastSeenAccount,
                   fallbackKey: lastSeenFallbackKey)
         return State(startedAt: startedAt, referenceDate: referenceDate)
     }
+#endif
 
-    private static func readDate(account: String, fallbackKey: String) -> Date? {
+    /// Advances the anti-clock-rollback reference for a trial whose start date
+    /// came from RevenueCat. The verified start date is deliberately not saved
+    /// locally, so preferences or Keychain data can never manufacture access.
+    static func verifiedState(startedAt: Date?,
+                              trustedReferenceDate: Date? = nil) -> State {
+        let wallClock = Date()
+        guard let startedAt else {
+            return State(startedAt: nil, referenceDate: wallClock)
+        }
+
+        let lastSeen = readKeychainDate(service: verifiedService,
+                                        account: lastSeenAccount) ?? wallClock
+        let serverReference = trustedReferenceDate ?? startedAt
+        let referenceDate = max(max(max(wallClock, lastSeen), startedAt),
+                                serverReference)
+        writeKeychainDate(referenceDate,
+                          service: verifiedService,
+                          account: lastSeenAccount)
+        return State(startedAt: startedAt, referenceDate: referenceDate)
+    }
+
+#if !MAC_APP_STORE
+    private static func readDate(service: String,
+                                 account: String,
+                                 fallbackKey: String) -> Date? {
+        if let value = readKeychainDate(service: service, account: account) {
+            return value
+        }
+
+        let fallback = UserDefaults.standard.double(forKey: fallbackKey)
+        return fallback > 0 ? Date(timeIntervalSince1970: fallback) : nil
+    }
+
+    private static func writeDate(_ date: Date,
+                                  service: String,
+                                  account: String,
+                                  fallbackKey: String) {
+        writeKeychainDate(date, service: service, account: account)
+
+        // UserDefaults is only a compatibility fallback for ad-hoc local
+        // development builds. The App Store path does not call this method.
+        UserDefaults.standard.set(date.timeIntervalSince1970, forKey: fallbackKey)
+    }
+#endif
+
+    private static func readKeychainDate(service: String,
+                                         account: String) -> Date? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -40,20 +99,18 @@ enum TrialPersistence {
             kSecMatchLimit as String: kSecMatchLimitOne
         ]
         var result: CFTypeRef?
-        if SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-           let data = result as? Data,
-           let raw = String(data: data, encoding: .utf8),
-           let timestamp = TimeInterval(raw) {
-            return Date(timeIntervalSince1970: timestamp)
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
+              let data = result as? Data,
+              let raw = String(data: data, encoding: .utf8),
+              let timestamp = TimeInterval(raw) else {
+            return nil
         }
-
-        let fallback = UserDefaults.standard.double(forKey: fallbackKey)
-        return fallback > 0 ? Date(timeIntervalSince1970: fallback) : nil
+        return Date(timeIntervalSince1970: timestamp)
     }
 
-    private static func writeDate(_ date: Date,
-                                  account: String,
-                                  fallbackKey: String) {
+    private static func writeKeychainDate(_ date: Date,
+                                          service: String,
+                                          account: String) {
         let data = Data(String(date.timeIntervalSince1970).utf8)
         let identity: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -69,9 +126,5 @@ enum TrialPersistence {
             item[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
             _ = SecItemAdd(item as CFDictionary, nil)
         }
-
-        // UserDefaults is only a compatibility fallback for local builds whose
-        // ad-hoc signature cannot access the production keychain item.
-        UserDefaults.standard.set(date.timeIntervalSince1970, forKey: fallbackKey)
     }
 }

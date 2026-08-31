@@ -10,7 +10,7 @@ const faqs = [
   ],
   [
     "What is included in the trial?",
-    "Every feature is unlocked for 7 days. There is no send counter and cancelling the AirDrop panel has no effect on your trial.",
+    "Every feature is unlocked for 7 days after you explicitly start the free trial through the Mac App Store. It never renews or charges automatically, and cancelling the AirDrop panel has no effect on it.",
   ],
   [
     "Does it need Full Disk Access?",
@@ -65,7 +65,7 @@ export default function Home() {
               <span>See the real app</span><b>↓</b>
             </a>
             <a className="button button-quiet" href={github} target="_blank" rel="noreferrer">
-              Public build <b>↗</b>
+              View on GitHub <b>↗</b>
             </a>
           </div>
           <div className="compatibility" aria-label="Compatibility">
@@ -198,13 +198,13 @@ export default function Home() {
           <Image src={icon} alt="AirFliq app icon" width={104} height={104} unoptimized />
           <p className="eyebrow"><i /> Seven days. Everything unlocked.</p>
           <h2>Try the complete workflow.<br />Keep it for <em>$4.99.</em></h2>
-          <p className="trial-lead">One lifetime purchase through the Mac App Store. No subscription and no send counter.</p>
+          <p className="trial-lead">Start the free trial when you are ready. There is no send counter, and the trial never renews or charges automatically. Keep AirFliq with one lifetime purchase through the Mac App Store.</p>
           <div className="trial-timeline" aria-label="7-day trial timeline">
             <span className="timeline-fill" /><i className="day active">1</i><i>2</i><i>3</i><i>4</i><i>5</i><i>6</i><i>7</i><b>∞</b>
           </div>
           <div className="trial-actions">
             <a className="button button-primary" href={github} target="_blank" rel="noreferrer"><span>Follow the public release</span><b>↗</b></a>
-            <span className="store-note"><i></i><b>Mac App Store</b><small>Listing in preparation</small></span>
+            <span className="store-note"><i></i><b>Mac App Store</b><small>Release in progress</small></span>
           </div>
         </div>
       </section>

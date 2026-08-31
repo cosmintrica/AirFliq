@@ -8,6 +8,31 @@ Vendor/RevenueCat/RevenueCat.xcframework/
 *.dmg
 .env
 .env.*
+!.env.example
+!**/.env.example
 website/node_modules/
 website/.next/
 website/dist/
+
+# Local marketing renders and credentials. Version the generators, compact
+# source artwork and final stills; keep heavy video/audio renders out of Git.
+marketing/shipaton/audio/.env.local
+marketing/shipaton/audio/__pycache__/
+marketing/shipaton/audio/openai-synced-scenes/
+marketing/shipaton/audio/*-voiceover-openai.wav
+marketing/shipaton/audio/*-voiceover-openai.m4a
+marketing/shipaton/video/frames/
+marketing/shipaton/video/product-film-frames/
+marketing/shipaton/video/app-preview-frames/
+marketing/shipaton/video/*-silent.mp4
+marketing/shipaton/video/*-draft.mp4
+marketing/shipaton/video/*.mp4
+marketing/app-store/final/*-silent.mp4
+marketing/app-store/final/*.mp4
+marketing/app-store/final/airfliq-app-preview.mov
+marketing/app-store/final/*-mixed.mov
+marketing/app-store/final/*-frames/
+marketing/shipaton/audio/*.wav
+marketing/shipaton/video/raw/window-test.mov
+marketing/shipaton/video/raw/
+marketing/shipaton/demo-files/

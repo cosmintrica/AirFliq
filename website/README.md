@@ -3,9 +3,11 @@
 The animated product, privacy and support site for AirFliq, built with Next.js,
 vinext and the OpenAI Sites runtime.
 
+Production: <https://airfliq.vercel.app>
+
 ## Prerequisites
 
-- Node.js `>=22.13.0`
+- Node.js `>=22.13.0 <23`
 
 ## Quick Start
 

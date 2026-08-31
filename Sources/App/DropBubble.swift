@@ -55,6 +55,15 @@ final class DropBubble {
         self.bridge = bridge
     }
 
+    func showForCapture(near cursor: NSPoint, complete: Bool) {
+        show(near: cursor)
+        panel?.sharingType = .readOnly
+        panel?.level = .normal
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.bridge?.model.prepareCapture(complete: complete)
+        }
+    }
+
     func hide() {
         guard let panel else { return }
         self.panel = nil
@@ -115,6 +124,14 @@ private final class DropExperienceModel: ObservableObject {
                 phase = .waiting
             }
         }
+    }
+
+    func prepareCapture(complete: Bool) {
+        transitionTask?.cancel()
+        entrance = true
+        phase = complete
+            ? .complete(name: "Launch brief.pdf", count: 1)
+            : .attracted(name: "Launch brief.pdf", count: 1)
     }
 
     func attract(_ urls: [URL]) {
@@ -198,8 +215,14 @@ private final class DropDestinationBridge: NSView {
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         let files = urls(from: sender)
         guard !files.isEmpty else { return false }
+
+        // Start the share while AppKit's drag grant is still alive. Waiting for
+        // the completion animation here can make sandboxed URLs lose their
+        // transient access and leave NSSharingService resolving them for tens
+        // of seconds. The visual confirmation now runs alongside the native
+        // AirDrop handoff instead of blocking it.
+        onDrop?(files)
         model.launch(files) { [weak self] in
-            self?.onDrop?(files)
             self?.onFinished?()
         }
         return true
@@ -232,10 +255,8 @@ private struct DropExperienceView: View {
                     }
                     .overlay {
                         RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(borderGradient, lineWidth: targeted ? 1.8 : 1)
+                            .strokeBorder(borderGradient, lineWidth: targeted ? 1.8 : 1)
                     }
-                    .shadow(color: glowColor.opacity(targeted ? 0.46 : 0.20),
-                            radius: targeted ? 28 : 16, y: 8)
 
                 Canvas { context, size in
                     drawFlightLines(context: &context, size: size, time: time)

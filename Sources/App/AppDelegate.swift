@@ -8,8 +8,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var dropView: StatusDropView!
     private let menuPanel = AirFliqMenuPanel()
     private var onboarding: OnboardingWindowController?
+    private var captureBubble: DropBubble?
     private var lastOpenAt: Date = .distantPast
     private var sendSuccessObserver: NSObjectProtocol?
+    private let captureMode = ProcessInfo.processInfo.environment["AIRFLIQ_CAPTURE_MODE"]
 
     // MARK: - Lifecycle
 
@@ -30,6 +32,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         ShortcutManager.shared.start()
         DragCatcher.shared.restoreFromDefaults()
+
+        if let captureMode {
+            DispatchQueue.main.async { [weak self] in
+                self?.presentCaptureMode(captureMode)
+            }
+            return
+        }
 
         if !Permissions.hasRunSetup || !Shortcut.hasConfigured {
             showOnboarding()
@@ -70,7 +79,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Clicking the toolbar icon without dragging: fall back to the selection.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
-        if Date().timeIntervalSince(lastOpenAt) > 0.5 {
+        if captureMode == nil,
+           !hasVisibleWindows,
+           Date().timeIntervalSince(lastOpenAt) > 0.5 {
             AirDrop.sendFinderSelection()
         }
         return false
@@ -115,6 +126,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             quit: { [weak self] in self?.quit() }
         )
         menuPanel.toggle(from: anchor, snapshot: snapshot, actions: actions)
+    }
+
+    private func presentCaptureMode(_ mode: String) {
+        switch mode {
+        case "shortcut":
+            showShortcutSetup()
+        case "menu":
+            showMenu(from: dropView)
+        case "paywall":
+            showPaywall()
+        case "about":
+            showAbout()
+        case "drag", "drag-complete":
+            let bubble = DropBubble()
+            captureBubble = bubble
+            let frame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+            bubble.showForCapture(
+                near: NSPoint(x: frame.midX - 150, y: frame.midY),
+                complete: mode == "drag-complete"
+            )
+        case "toast":
+            Toast.show(
+                "Drag target online",
+                subtitle: "Pick up any file and AirFliq will meet your cursor."
+            )
+        default:
+            showOnboarding()
+        }
     }
 
     // MARK: - Actions

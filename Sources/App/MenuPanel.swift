@@ -102,7 +102,7 @@ final class AirFliqMenuPanel {
         // macOS menus visually hang from the right side of their status item.
         // Clamp on every edge so the full glass surface always remains visible,
         // including on scaled, notched and vertically-arranged displays.
-        let preferredX = anchorOnScreen.maxX - width + 24
+        let preferredX = anchorOnScreen.maxX - width
         let x = min(max(preferredX, visible.minX + 18),
                     visible.maxX - width - 18)
         let screenTop = (screen?.frame.maxY ?? visible.maxY)
@@ -136,7 +136,7 @@ private final class MenuExperienceModel: ObservableObject {
         isPro: false,
         trialStatus: "7 days left in your trial",
         trialExpired: false,
-        price: "$4.99",
+        price: "one purchase",
         currentShortcut: "⌃⌥A",
         dragEnabled: false,
         launchAtLogin: false

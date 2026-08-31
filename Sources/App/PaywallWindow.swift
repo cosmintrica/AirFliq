@@ -6,7 +6,7 @@ final class PaywallWindowController: NSWindowController {
     static let shared = PaywallWindowController()
 
     private convenience init() {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 540, height: 600),
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 540, height: 630),
                               styleMask: [.titled, .closable, .fullSizeContentView],
                               backing: .buffered,
                               defer: false)
@@ -47,6 +47,7 @@ private struct AirFliqPaywallView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var entered = false
+    @State private var isStartingTrial = false
     @State private var isPurchasing = false
     @State private var isRestoring = false
     @State private var statusMessage: String?
@@ -85,11 +86,7 @@ private struct AirFliqPaywallView: View {
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 8)
 
-                        Text(model.isPro
-                             ? "AirFliq Pro is active on this Apple Account."
-                             : (model.isTrialExpired
-                                ? "Your full trial has ended. Unlock AirFliq forever with one purchase."
-                                : "Every feature is open during your 7-day trial. Keep full access forever with one purchase."))
+                        Text(heroDescription)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(.secondary)
                             .lineSpacing(3)
@@ -103,7 +100,7 @@ private struct AirFliqPaywallView: View {
                 .scaleEffect(entered ? 1 : 0.94)
 
                 VStack(spacing: 12) {
-                    HStack(spacing: 10) {
+                    HStack(alignment: .top, spacing: 10) {
                         PaywallFeature(symbol: "paperplane.fill",
                                        title: "Unlimited sends",
                                        detail: "No counter after Pro")
@@ -115,7 +112,11 @@ private struct AirFliqPaywallView: View {
                                        detail: "No subscription")
                     }
 
-                    freeUsage
+                    if model.isTrialStarted || model.isPro {
+                        freeUsage
+                    } else {
+                        trialDisclosure
+                    }
                 }
                 .padding(16)
                 .background {
@@ -126,10 +127,15 @@ private struct AirFliqPaywallView: View {
                 .opacity(entered ? 1 : 0)
                 .offset(y: entered ? 0 : 14)
 
-                purchaseButton
-                    .padding(.top, 17)
-                    .opacity(entered ? 1 : 0)
-                    .offset(y: entered ? 0 : 18)
+                VStack(spacing: 10) {
+                    if !model.isTrialStarted && !model.isPro {
+                        startTrialButton
+                    }
+                    purchaseButton
+                }
+                .padding(.top, 17)
+                .opacity(entered ? 1 : 0)
+                .offset(y: entered ? 0 : 18)
 
                 status
                     .padding(.top, 9)
@@ -153,7 +159,7 @@ private struct AirFliqPaywallView: View {
                         .fill(Color.white.opacity(0.16))
                         .frame(width: 3, height: 3)
 
-                    Text("One purchase through the Mac App Store")
+                    Text("App Store purchases restore on this Apple Account")
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
@@ -165,7 +171,7 @@ private struct AirFliqPaywallView: View {
             .padding(.bottom, 20)
         }
         .background(.ultraThinMaterial)
-        .frame(width: 540, height: 600)
+        .frame(width: 540, height: 630)
         .onAppear {
             model.refresh()
             withAnimation(.spring(response: 0.88, dampingFraction: 0.82)) {
@@ -174,6 +180,12 @@ private struct AirFliqPaywallView: View {
         }
         .onChange(of: model.isPro) { isPro in
             guard isPro else { return }
+            withAnimation(.spring(response: 0.72, dampingFraction: 0.66)) {
+                successPulse.toggle()
+            }
+        }
+        .onChange(of: model.isTrialStarted) { started in
+            guard started, !model.isPro else { return }
             withAnimation(.spring(response: 0.72, dampingFraction: 0.66)) {
                 successPulse.toggle()
             }
@@ -198,9 +210,7 @@ private struct AirFliqPaywallView: View {
 
             Spacer()
 
-            Text(model.isPro
-                 ? "PRO ACTIVE"
-                 : (model.isTrialExpired ? "TRIAL ENDED" : "7-DAY FULL TRIAL"))
+            Text(headerStatus)
                 .font(.system(size: 9.5, weight: .bold, design: .monospaced))
                 .tracking(0.7)
                 .foregroundStyle(model.isPro
@@ -250,6 +260,62 @@ private struct AirFliqPaywallView: View {
         }
     }
 
+    private var trialDisclosure: some View {
+        HStack(alignment: .top, spacing: 11) {
+            Image(systemName: "calendar.badge.checkmark")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.airFliqCyan)
+                .frame(width: 30, height: 30)
+                .background(Color.airFliqCyan.opacity(0.10), in: Circle())
+                .overlay(Circle().stroke(Color.airFliqCyan.opacity(0.18), lineWidth: 1))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("7-day full trial")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+
+                Text("After day 7, Finder selection, shortcuts, right-click, menu bar and drag-to-send stop sending until Lifetime Pro is unlocked.")
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(1.5)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("No automatic renewal or charge. \(lifetimeDisclosure)")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.76))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.top, 11)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.white.opacity(0.09))
+                .frame(height: 1)
+        }
+    }
+
+    private var startTrialButton: some View {
+        Button(action: startTrial) {
+            HStack(spacing: 10) {
+                if isStartingTrial {
+                    AirFliqCometLoader(color: .white)
+                        .frame(width: 19, height: 19)
+                } else {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 14, weight: .bold))
+                }
+                Text(isStartingTrial ? "Confirming with the App Store" : "Start free 7-day trial")
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
+        }
+        .buttonStyle(AirFliqPrimaryButtonStyle(accent: .airFliqViolet))
+        .disabled(!canStartTrial)
+        .opacity(canStartTrial ? 1 : 0.58)
+        .accessibilityHint("Starts seven days of full access after App Store confirmation. It does not renew and does not charge you.")
+    }
+
     private var purchaseButton: some View {
         Button(action: purchase) {
             HStack(spacing: 10) {
@@ -266,7 +332,10 @@ private struct AirFliqPaywallView: View {
             .frame(maxWidth: .infinity)
             .frame(height: 48)
         }
-        .buttonStyle(AirFliqPrimaryButtonStyle(accent: model.isPro ? .airFliqGreen : .airFliqBlue))
+        .buttonStyle(PaywallPurchaseButtonStyle(
+            accent: model.isPro ? .airFliqGreen : .airFliqBlue,
+            prominent: model.isTrialStarted || model.isPro
+        ))
         .disabled(!canPurchase)
         .opacity(canPurchase || model.isPro ? 1 : 0.58)
     }
@@ -286,9 +355,23 @@ private struct AirFliqPaywallView: View {
         .frame(maxWidth: .infinity, minHeight: 28)
     }
 
-    private var isBusy: Bool { isPurchasing || isRestoring }
+    private var isBusy: Bool { isStartingTrial || isPurchasing || isRestoring }
+    private var isMarketingCapture: Bool {
+#if AIRFLIQ_MARKETING_CAPTURE
+        true
+#elseif DEBUG
+        ProcessInfo.processInfo.environment["AIRFLIQ_CAPTURE_MODE"] == "paywall"
+#else
+        false
+#endif
+    }
+    private var canStartTrial: Bool {
+        !model.isPro && !model.isTrialStarted && !isBusy
+            && (isMarketingCapture || (model.isConfigured && model.trialProduct != nil))
+    }
     private var canPurchase: Bool {
-        !model.isPro && !isBusy && model.isConfigured && model.package != nil
+        !model.isPro && !isBusy
+            && (isMarketingCapture || (model.isConfigured && model.package != nil))
     }
     private var usageProgress: CGFloat {
         if model.isPro { return 1 }
@@ -296,16 +379,49 @@ private struct AirFliqPaywallView: View {
     }
     private var heroTitle: String {
         if model.isPro { return "Every flight is yours." }
+        if !model.isTrialStarted { return "Seven days. Your choice." }
         return model.isTrialExpired ? "Keep AirFliq moving." : "Seven days. Every flight."
+    }
+    private var heroDescription: String {
+        if model.isPro { return "AirFliq Pro is active on this Apple Account." }
+        if !model.isTrialStarted {
+            return "Try every AirFliq send flow, then decide if Lifetime Pro is right for you."
+        }
+        if model.isTrialExpired {
+            return "Your full trial has ended. Unlock AirFliq forever with one purchase."
+        }
+        return "Every feature is open during your 7-day trial. Keep full access forever with one purchase."
+    }
+    private var headerStatus: String {
+        if model.isPro { return "PRO ACTIVE" }
+        if !model.isTrialStarted { return "TRIAL READY" }
+        return model.isTrialExpired ? "TRIAL ENDED" : "7-DAY FULL TRIAL"
+    }
+    private var lifetimeDisclosure: String {
+        if let price = model.localizedLifetimePrice {
+            return "Lifetime Pro costs \(price) once."
+        }
+        if isMarketingCapture {
+            return "Lifetime Pro costs $4.99 once."
+        }
+        return "The localized one-time Lifetime Pro price appears when the App Store finishes loading."
     }
     private var purchaseTitle: String {
         if model.isPro { return "Lifetime Pro is active" }
         if isPurchasing { return "Connecting to the App Store" }
-        return "Unlock forever for \(model.price)"
+        if isMarketingCapture { return "Unlock Lifetime Pro for $4.99" }
+        return model.localizedLifetimePrice.map { "Unlock Lifetime Pro for \($0)" }
+            ?? "Unlock Lifetime Pro"
     }
     private var statusColor: Color {
+        if isMarketingCapture { return .airFliqCyan }
         switch statusKind {
-        case .neutral: return model.isPro ? .airFliqGreen : .airFliqCyan
+        case .neutral:
+            if !model.isTrialStarted,
+               case .failed = model.trialStoreState {
+                return .orange
+            }
+            return model.isPro ? .airFliqGreen : .airFliqCyan
         case .success: return .airFliqGreen
         case .warning: return .orange
         }
@@ -313,6 +429,21 @@ private struct AirFliqPaywallView: View {
     private var resolvedStatus: String {
         if let statusMessage { return statusMessage }
         if model.isPro { return "Unlimited sending is synced with RevenueCat." }
+        if isMarketingCapture {
+            return "The trial waits for your App Store confirmation and never renews."
+        }
+        if !model.isTrialStarted {
+            switch model.trialStoreState {
+            case .notConfigured:
+                return "Trial activation is available in the Mac App Store build."
+            case .loading:
+                return "Loading the free App Store trial..."
+            case .ready:
+                return "The trial waits for your confirmation and never renews."
+            case .failed(let message):
+                return message
+            }
+        }
         switch model.storeState {
         case .notConfigured:
             return model.isTrialExpired
@@ -326,6 +457,32 @@ private struct AirFliqPaywallView: View {
                 : model.trialStatusText
         case .failed(let message):
             return message
+        }
+    }
+
+    private func startTrial() {
+        guard canStartTrial else { return }
+        isStartingTrial = true
+        statusKind = .neutral
+        statusMessage = "Opening the free App Store trial confirmation..."
+        model.startTrial { outcome in
+            isStartingTrial = false
+            switch outcome {
+            case .trialStarted, .trialRestored:
+                statusKind = .success
+                statusMessage = "Your 7-day trial is active. Nothing will renew or charge automatically."
+            case .cancelled:
+                statusKind = .neutral
+                statusMessage = "Trial start cancelled. Your 7 days have not started."
+            case .trialExpired:
+                statusKind = .warning
+                statusMessage = "This Apple Account has already used the 7-day trial."
+            case .failed(let message):
+                statusKind = .warning
+                statusMessage = message
+            case .purchased, .restored, .nothingToRestore:
+                break
+            }
         }
     }
 
@@ -348,6 +505,8 @@ private struct AirFliqPaywallView: View {
                 statusMessage = message
             case .restored, .nothingToRestore:
                 break
+            case .trialStarted, .trialRestored, .trialExpired:
+                break
             }
         }
     }
@@ -365,13 +524,22 @@ private struct AirFliqPaywallView: View {
                 statusMessage = "Lifetime Pro restored."
             case .nothingToRestore:
                 statusKind = .neutral
-                statusMessage = "No Lifetime Pro purchase was found for this Apple Account."
+                statusMessage = "No Lifetime Pro or 7-day Trial was found for this Apple Account."
+            case .trialRestored:
+                statusKind = .success
+                statusMessage = "Your active 7-day trial was restored."
+            case .trialExpired:
+                statusKind = .neutral
+                statusMessage = "Your 7-day trial was restored, but it has ended."
             case .failed(let message):
                 statusKind = .warning
                 statusMessage = message
             case .cancelled:
                 statusKind = .neutral
                 statusMessage = "Restore cancelled."
+            case .trialStarted:
+                statusKind = .success
+                statusMessage = "Your 7-day trial is active."
             }
         }
     }
@@ -383,22 +551,59 @@ private struct PaywallFeature: View {
     let detail: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .center, spacing: 7) {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(LinearGradient(colors: [.airFliqCyan, .airFliqViolet],
                                                 startPoint: .topLeading,
                                                 endPoint: .bottomTrailing))
-                .frame(height: 18)
+                .frame(maxWidth: .infinity, minHeight: 18, alignment: .center)
             Text(title)
                 .font(.system(size: 11, weight: .semibold))
                 .lineLimit(1)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
             Text(detail)
                 .font(.system(size: 9.5, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, alignment: .center)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+}
+
+private struct PaywallPurchaseButtonStyle: ButtonStyle {
+    let accent: Color
+    let prominent: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .foregroundStyle(prominent ? Color.white : Color.white.opacity(0.86))
+            .background {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(
+                        prominent
+                            ? AnyShapeStyle(LinearGradient(colors: [accent.opacity(0.98),
+                                                                    .airFliqBlue,
+                                                                    .airFliqViolet.opacity(0.92)],
+                                                           startPoint: .leading,
+                                                           endPoint: .trailing))
+                            : AnyShapeStyle(Color.white.opacity(configuration.isPressed ? 0.08 : 0.045))
+                    )
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .stroke(prominent ? Color.white.opacity(0.14) : accent.opacity(0.28),
+                            lineWidth: 1)
+            }
+            .shadow(color: prominent ? accent.opacity(0.26) : .clear,
+                    radius: prominent ? 10 : 0,
+                    y: prominent ? 3 : 0)
+            .scaleEffect(configuration.isPressed ? 0.975 : 1)
+            .animation(.spring(response: 0.32, dampingFraction: 0.78),
+                       value: configuration.isPressed)
     }
 }
 

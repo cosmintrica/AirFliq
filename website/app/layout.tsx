@@ -13,7 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://airdropper-mac.cosmintrricaa.chatgpt.site"),
+  metadataBase: new URL("https://airfliq.vercel.app"),
+  alternates: {
+    canonical: "/",
+  },
   title: "AirFliq - Select. Fliq. Sent.",
   description:
     "The beautifully fast way to prepare files for AirDrop from Finder, a shortcut, the menu bar, or a drag gesture.",
@@ -23,6 +26,7 @@ export const metadata: Metadata = {
     apple: "/assets/airfliq-icon.png",
   },
   openGraph: {
+    url: "/",
     title: "AirFliq - Select. Fliq. Sent.",
     description: "Try every AirFliq feature free for 7 days. Lifetime Pro is $4.99.",
     type: "website",

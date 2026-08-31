@@ -93,16 +93,19 @@ enum Toast {
 
         var destination = panel.frame.origin
         let pointer = NSEvent.mouseLocation
-        let targetScreen = NSScreen.screens.first { NSMouseInRect(pointer, $0.frame, false) }
-            ?? NSApp.keyWindow?.screen
+        // Follow the active app window first. Pointer-first placement made the
+        // HUD jump between displays when a setting was toggled from another
+        // screen, unlike a normal macOS notification.
+        let targetScreen = NSApp.keyWindow?.screen
             ?? NSApp.mainWindow?.screen
             ?? NSApp.windows.first(where: { $0.isVisible && $0 !== window })?.screen
+            ?? NSScreen.screens.first { NSMouseInRect(pointer, $0.frame, false) }
             ?? NSScreen.main
         if let screen = targetScreen {
             let visible = screen.visibleFrame
-            let topInset = max(NSStatusBar.system.thickness, screen.safeAreaInsets.top)
-            let topEdge = screen.frame.maxY - topInset - 10
-            let rightEdge = min(screen.frame.maxX - 18, visible.maxX - 18)
+            // visibleFrame already excludes the menu bar, notch and Dock.
+            let topEdge = visible.maxY - 10
+            let rightEdge = visible.maxX - 18
             destination = NSPoint(x: rightEdge - width,
                                   y: topEdge - height)
         }

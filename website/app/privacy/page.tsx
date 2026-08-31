@@ -5,6 +5,9 @@ import Image from "next/image";
 export const metadata: Metadata = {
   title: "Privacy - AirFliq",
   description: "How AirFliq handles files, permissions, purchases and personal data.",
+  alternates: {
+    canonical: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {
@@ -29,8 +32,8 @@ export default function PrivacyPage() {
         <h1>Privacy, without<br />the fine print.</h1>
         <p className="legal-lead">
           AirFliq is designed to move files through macOS without collecting
-          information about you. There is no AirFliq account, cloud upload,
-          analytics profile or advertising tracker.
+          your identity or file data. There is no AirFliq account, cloud
+          upload or advertising tracker.
         </p>
 
         <section className="legal-section">
@@ -64,8 +67,10 @@ export default function PrivacyPage() {
           <h2>Data collection</h2>
           <p>
             AirFliq does not collect file names, file contents or advertising
-            identifiers. Preferences and the trial start date remain locally on
-            your Mac.
+            identifiers. Preferences remain locally on your Mac. Apple and
+            RevenueCat process purchase history and a RevenueCat-generated
+            anonymous App User ID to verify trial and purchase status. Neither
+            service receives your files or file names.
           </p>
         </section>
 
@@ -74,8 +79,11 @@ export default function PrivacyPage() {
           <p>
             Mac App Store purchases are processed by Apple. AirFliq uses
             RevenueCat to verify the Pro entitlement and restore purchases.
-            RevenueCat may process an anonymous app user identifier and purchase
-            status, but never receives your files or file names.
+            Purchase history is used for App Functionality, including receipt
+            validation and entitlements, and for RevenueCat Analytics. AirFliq
+            does not link the anonymous App User ID or purchase history to your
+            identity, and does not use this data to track you across apps or
+            websites.
           </p>
         </section>
 

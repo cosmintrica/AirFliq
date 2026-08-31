@@ -412,11 +412,21 @@ final class OnboardingExperienceModel: ObservableObject {
         isWorking = true
         Permissions.requestFiles(attachedTo: window) { [weak self] state in
             guard let self else { return }
-            isWorking = false
-            apply([Permissions.automationState(), state, Permissions.finderExtensionState()],
-                  celebrate: state == .granted ? 1 : nil)
-            DispatchQueue.main.async { [weak self] in
-                guard let self, window?.isVisible == true else { return }
+            // The development permission probe invokes PluginKit. Running it
+            // synchronously in NSOpenPanel's completion handler blocks AppKit's
+            // dismissal animation and makes the chooser look frozen.
+            Task { [weak self] in
+                async let automation = Task.detached(priority: .utility) {
+                    Permissions.automationState()
+                }.value
+                async let menu = Task.detached(priority: .utility) {
+                    Permissions.finderExtensionState()
+                }.value
+                let values = await [automation, state, menu]
+                guard let self else { return }
+                isWorking = false
+                apply(values, celebrate: state == .granted ? 1 : nil)
+                guard window?.isVisible == true else { return }
                 window?.makeKeyAndOrderFront(nil)
             }
         }
@@ -510,6 +520,7 @@ final class OnboardingExperienceModel: ObservableObject {
 private struct OnboardingExperience: View {
 
     @ObservedObject var model: OnboardingExperienceModel
+    @ObservedObject private var monetization = Monetization.shared
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var entered = false
 
@@ -630,7 +641,9 @@ private struct OnboardingExperience: View {
 
             Spacer(minLength: 8)
 
-            Text("7-day full trial  •  Pro $4.99 lifetime")
+            Text(monetization.package == nil
+                 ? "7-day trial available  •  Lifetime Pro"
+                 : "7-day trial available  •  Lifetime Pro \(monetization.price)")
                 .font(.system(size: 10.5, weight: .medium))
                 .foregroundStyle(.tertiary)
 
@@ -1597,8 +1610,10 @@ private struct FlightPermissionGlyph: View {
         }
         DispatchQueue.main.async {
             withAnimation(.linear(duration: 1.72)) { progress = 1 }
-            withAnimation(.spring(response: 0.74, dampingFraction: 0.56)
-                .delay(1.12)) {
+            // The bounce starts exactly as the solid disc finishes. Starting it
+            // during the fill phase was the small hitch visible at the end.
+            withAnimation(.spring(response: 0.58, dampingFraction: 0.62)
+                .delay(1.31)) {
                 completionScale = 1
             }
         }
@@ -1606,9 +1621,12 @@ private struct FlightPermissionGlyph: View {
 
     private func drawSuccess(context: inout GraphicsContext,
                              center: CGPoint, radius: CGFloat) {
-        let segmentProgress = remap(renderedProgress, 0, 0.62)
-        let fillProgress = smoothStep(remap(renderedProgress, 0.60, 0.78))
-        let checkProgress = smoothStep(remap(renderedProgress, 0.72, 1))
+        // One continuous sequence: finish every perimeter segment, replace it
+        // with the solid disc, then draw the check. The phases meet at their
+        // boundaries, so there is neither a gap nor a duplicated overlap.
+        let segmentProgress = remap(renderedProgress, 0, 0.56)
+        let fillProgress = smoothStep(remap(renderedProgress, 0.56, 0.76))
+        let checkProgress = smoothStep(remap(renderedProgress, 0.76, 1))
 
         if fillProgress < 1 {
             drawSegments(context: &context, center: center, radius: radius,

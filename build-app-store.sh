@@ -9,6 +9,9 @@ set -euo pipefail
 #   APP_PROFILE         Mac App Store profile for com.cosmintrica.airfliq
 #   EXT_PROFILE         Mac App Store profile for com.cosmintrica.airfliq.finder
 #   REVENUECAT_API_KEY  Public macOS SDK key from RevenueCat
+# Optional:
+#   MARKETING_VERSION   Numeric App Store version, defaults to App-Info.plist
+#   BUILD_NUMBER        Numeric App Store build, defaults to App-Info.plist
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 BUILD="$ROOT/build"
@@ -112,21 +115,25 @@ SIGN_IDENTITY="$SIGN_IDENTITY" \
 REVENUECAT_API_KEY="$REVENUECAT_API_KEY" \
 "$ROOT/build.sh"
 
+echo "▸ Verifying trial policy"
+/bin/bash "$ROOT/scripts/verify-trial-policy.sh"
+
 echo "▸ Verifying sandbox, privacy manifest and universal binaries"
-/usr/bin/codesign --verify --deep --strict "$APP"
-/usr/bin/codesign -d --entitlements :- "$APP" 2>/dev/null \
-    | /usr/bin/grep -q "com.apple.security.app-sandbox"
 /usr/bin/test -f "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
-/usr/bin/xcrun lipo "$APP/Contents/MacOS/AirFliq" -verify_arch arm64
-/usr/bin/xcrun lipo "$APP/Contents/MacOS/AirFliq" -verify_arch x86_64
 
 echo "▸ Packaging for App Store Connect"
 /usr/bin/productbuild \
     --component "$APP" /Applications \
     --sign "$INSTALLER_IDENTITY" \
     "$PKG"
-/usr/bin/pkgutil --check-signature "$PKG"
+
+MARKETING_VERSION="${MARKETING_VERSION:-}" \
+BUILD_NUMBER="${BUILD_NUMBER:-}" \
+    "$ROOT/scripts/verify-app-store-build.sh" "$APP" "$PKG"
+
+/usr/bin/shasum -a 256 "$PKG" >"$PKG.sha256"
 
 echo ""
 echo "✅ Ready for validation and upload: $PKG"
-echo "   Use Transporter or xcrun altool after creating the App Store Connect record."
+echo "   SHA-256: $PKG.sha256"
+echo "   This script never uploads or submits the package."

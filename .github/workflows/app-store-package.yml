@@ -1,0 +1,173 @@
+name: Build signed Mac App Store package
+
+on:
+  workflow_dispatch:
+    inputs:
+      marketing_version:
+        description: App Store marketing version, for example 1.0.0
+        required: true
+        default: 1.0.0
+        type: string
+      build_number:
+        description: Unique numeric App Store build number
+        required: true
+        default: "1"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: airfliq-app-store-package
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Signed universal App Store package
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      MARKETING_VERSION: ${{ inputs.marketing_version }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Verify release inputs and stable Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$MARKETING_VERSION" =~ ^[0-9]+([.][0-9]+){0,2}$ ]]
+          [[ "$BUILD_NUMBER" =~ ^[0-9]+([.][0-9]+){0,2}$ ]]
+          test -d "$DEVELOPER_DIR"
+          XCODE_VERSION="$(xcodebuild -version | head -1)"
+          test "$XCODE_VERSION" = "Xcode 26.6"
+          if xcodebuild -version | grep -qi beta; then
+            echo "error: beta Xcode cannot produce an App Store release" >&2
+            exit 1
+          fi
+          bash -n build.sh build-app-store.sh scripts/fetch-revenuecat.sh scripts/verify-app-store-build.sh scripts/verify-trial-policy.sh
+          plutil -lint Resources/AppStore-App.entitlements Resources/Ext.entitlements
+
+      - name: Fetch pinned RevenueCat SDK
+        run: ./scripts/fetch-revenuecat.sh
+
+      - name: Import signing material and build package
+        shell: bash
+        env:
+          APP_P12_BASE64: ${{ secrets.AIRFLIQ_APPLE_DISTRIBUTION_P12_BASE64 }}
+          APP_P12_PASSWORD: ${{ secrets.AIRFLIQ_APPLE_DISTRIBUTION_P12_PASSWORD }}
+          INSTALLER_P12_BASE64: ${{ secrets.AIRFLIQ_MAC_INSTALLER_DISTRIBUTION_P12_BASE64 }}
+          INSTALLER_P12_PASSWORD: ${{ secrets.AIRFLIQ_MAC_INSTALLER_DISTRIBUTION_P12_PASSWORD }}
+          APP_PROFILE_BASE64: ${{ secrets.AIRFLIQ_APP_STORE_APP_PROFILE_BASE64 }}
+          EXT_PROFILE_BASE64: ${{ secrets.AIRFLIQ_APP_STORE_EXTENSION_PROFILE_BASE64 }}
+          REVENUECAT_API_KEY: ${{ secrets.AIRFLIQ_REVENUECAT_PUBLIC_SDK_KEY }}
+        run: |
+          set -euo pipefail
+
+          required=(
+            APP_P12_BASE64
+            APP_P12_PASSWORD
+            INSTALLER_P12_BASE64
+            INSTALLER_P12_PASSWORD
+            APP_PROFILE_BASE64
+            EXT_PROFILE_BASE64
+            REVENUECAT_API_KEY
+          )
+          for variable in "${required[@]}"; do
+            if [ -z "${!variable:-}" ]; then
+              echo "error: required GitHub Actions secret for $variable is empty" >&2
+              exit 1
+            fi
+          done
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/airfliq-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 32)"
+          APP_P12="$RUNNER_TEMP/airfliq-application.p12"
+          INSTALLER_P12="$RUNNER_TEMP/airfliq-installer.p12"
+          APP_PROFILE="$RUNNER_TEMP/AirFliq.provisionprofile"
+          EXT_PROFILE="$RUNNER_TEMP/AirFliqFinder.provisionprofile"
+
+          printf '%s' "$APP_P12_BASE64" | /usr/bin/base64 --decode > "$APP_P12"
+          printf '%s' "$INSTALLER_P12_BASE64" | /usr/bin/base64 --decode > "$INSTALLER_P12"
+          printf '%s' "$APP_PROFILE_BASE64" | /usr/bin/base64 --decode > "$APP_PROFILE"
+          printf '%s' "$EXT_PROFILE_BASE64" | /usr/bin/base64 --decode > "$EXT_PROFILE"
+          chmod 600 "$APP_P12" "$INSTALLER_P12" "$APP_PROFILE" "$EXT_PROFILE"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+          security import "$APP_P12" -k "$KEYCHAIN_PATH" -P "$APP_P12_PASSWORD" -A
+          security import "$INSTALLER_P12" -k "$KEYCHAIN_PATH" -P "$INSTALLER_P12_PASSWORD" -A
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          SIGN_IDENTITY="$(
+            security find-identity -v -p codesigning "$KEYCHAIN_PATH" |
+              awk '/"Apple Distribution:|"3rd Party Mac Developer Application:/{print $2; exit}'
+          )"
+          if [ -z "$SIGN_IDENTITY" ]; then
+            echo "error: no Apple Distribution application identity was imported" >&2
+            exit 1
+          fi
+
+          INSTALLER_CERT="$RUNNER_TEMP/airfliq-installer.pem"
+          if ! security find-certificate -a -c "Mac Installer Distribution" -p "$KEYCHAIN_PATH" > "$INSTALLER_CERT" || \
+              [ ! -s "$INSTALLER_CERT" ]; then
+            security find-certificate -a -c "3rd Party Mac Developer Installer" -p "$KEYCHAIN_PATH" > "$INSTALLER_CERT"
+          fi
+          INSTALLER_IDENTITY="$(
+            openssl x509 -in "$INSTALLER_CERT" -noout -fingerprint -sha1 |
+              sed 's/^.*=//; s/://g'
+          )"
+          if [ -z "$INSTALLER_IDENTITY" ]; then
+            echo "error: no Mac Installer Distribution identity was imported" >&2
+            exit 1
+          fi
+
+          SIGN_IDENTITY="$SIGN_IDENTITY" \
+          INSTALLER_IDENTITY="$INSTALLER_IDENTITY" \
+          APP_PROFILE="$APP_PROFILE" \
+          EXT_PROFILE="$EXT_PROFILE" \
+          REVENUECAT_API_KEY="$REVENUECAT_API_KEY" \
+          MARKETING_VERSION="$MARKETING_VERSION" \
+          BUILD_NUMBER="$BUILD_NUMBER" \
+            ./build-app-store.sh
+
+          {
+            echo "AirFliq $MARKETING_VERSION ($BUILD_NUMBER)"
+            echo "Commit $GITHUB_SHA"
+            xcodebuild -version
+            echo "App architectures: $(lipo -archs build/AirFliq.app/Contents/MacOS/AirFliq)"
+            echo "Extension architectures: $(lipo -archs build/AirFliq.app/Contents/PlugIns/AirFliqFinder.appex/Contents/MacOS/AirFliqFinder)"
+            cat build/AirFliq-AppStore.pkg.sha256
+          } > build/AppStore-build.txt
+
+      - name: Upload signed package artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: AirFliq-AppStore-${{ inputs.marketing_version }}-${{ inputs.build_number }}
+          path: |
+            build/AirFliq-AppStore.pkg
+            build/AirFliq-AppStore.pkg.sha256
+            build/AppStore-build.txt
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Remove signing material
+        if: always()
+        shell: bash
+        run: |
+          security delete-keychain "$RUNNER_TEMP/airfliq-signing.keychain-db" 2>/dev/null || true
+          rm -f \
+            "$RUNNER_TEMP/airfliq-application.p12" \
+            "$RUNNER_TEMP/airfliq-installer.p12" \
+            "$RUNNER_TEMP/airfliq-installer.pem" \
+            "$RUNNER_TEMP/AirFliq.provisionprofile" \
+            "$RUNNER_TEMP/AirFliqFinder.provisionprofile"

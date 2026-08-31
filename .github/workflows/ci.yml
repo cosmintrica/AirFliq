@@ -14,16 +14,28 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Validate release scripts and entitlements
+        run: |
+          bash -n build.sh build-app-store.sh scripts/fetch-revenuecat.sh scripts/verify-app-store-build.sh scripts/verify-trial-policy.sh
+          plutil -lint Resources/AppStore-App.entitlements Resources/Ext.entitlements
       - name: Fetch RevenueCat SDK
         run: ./scripts/fetch-revenuecat.sh
       - name: Build ARM64 and Intel app
         run: ./build.sh
       - name: Verify universal binaries and signatures
         run: |
-          lipo build/AirFliq.app/Contents/MacOS/AirFliq -verify_arch arm64 x86_64
-          lipo build/AirFliq.app/Contents/PlugIns/AirFliqFinder.appex/Contents/MacOS/AirFliqFinder -verify_arch arm64 x86_64
+          for arch in arm64 x86_64; do
+            lipo build/AirFliq.app/Contents/MacOS/AirFliq -verify_arch "$arch"
+            lipo build/AirFliq.app/Contents/PlugIns/AirFliqFinder.appex/Contents/MacOS/AirFliqFinder -verify_arch "$arch"
+          done
           codesign --verify --deep --strict build/AirFliq.app
+      - name: Build sandboxed App Store code path
+        run: APP_STORE_BUILD=1 BUILD_CONFIGURATION=Release ./build.sh
+      - name: Verify explicit trial policy
+        run: bash scripts/verify-trial-policy.sh
+      - name: Verify sandboxed universal app and Finder extension
+        run: scripts/verify-app-store-build.sh --allow-adhoc --skip-package
 
   website:
     name: Landing page
@@ -33,12 +45,13 @@ jobs:
       run:
         working-directory: website
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: website/package-lock.json
       - run: npm ci
       - run: npm test
+      - run: npm run build:vercel
       - run: npm run lint

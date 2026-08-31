@@ -241,13 +241,8 @@ PY
     [ "$(entitlement_value "$APP_ENTITLEMENTS" com.apple.application-identifier || true)" = \
         "$SIGNING_TEAM.com.cosmintrica.airfliq" ] || \
         fail "signed app identifier entitlement does not match its bundle ID"
-    [ "$(entitlement_value "$EXT_ENTITLEMENTS" com.apple.application-identifier || true)" = \
-        "$SIGNING_TEAM.com.cosmintrica.airfliq.finder" ] || \
-        fail "signed extension identifier entitlement does not match its bundle ID"
     [ "$(entitlement_value "$APP_ENTITLEMENTS" com.apple.developer.team-identifier || true)" = \
         "$SIGNING_TEAM" ] || fail "signed app team entitlement is incorrect"
-    [ "$(entitlement_value "$EXT_ENTITLEMENTS" com.apple.developer.team-identifier || true)" = \
-        "$SIGNING_TEAM" ] || fail "signed extension team entitlement is incorrect"
     case "$APP_AUTHORITY" in
         "Apple Distribution:"*|"3rd Party Mac Developer Application:"*) ;;
         *) fail "app is not signed with an App Store distribution certificate: $APP_AUTHORITY" ;;

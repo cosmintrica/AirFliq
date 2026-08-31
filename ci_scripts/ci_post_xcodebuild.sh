@@ -18,15 +18,50 @@ artifact_root="${CI_APP_STORE_SIGNED_APP_PATH:-${CI_ARCHIVE_PATH:-}}"
   exit 1
 }
 
-if [ -d "$artifact_root/Contents" ] && [ "$(basename "$artifact_root")" = "AirFliq.app" ]; then
-  app="$artifact_root"
+temporary_root=""
+cleanup() {
+  [ -z "$temporary_root" ] || rm -rf "$temporary_root"
+}
+trap cleanup EXIT HUP INT TERM
+
+if [ -f "$artifact_root" ] && [ "${artifact_root##*.}" = "zip" ]; then
+  temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/airfliq-cloud-export.XXXXXX")"
+  /usr/bin/ditto -x -k "$artifact_root" "$temporary_root"
+  search_root="$temporary_root"
 else
-  app="$(find "$artifact_root" -type d -name AirFliq.app -print -quit)"
+  search_root="$artifact_root"
 fi
+
+package=""
+if [ -f "$search_root" ] && [ "${search_root##*.}" = "pkg" ]; then
+  package="$search_root"
+else
+  package="$(find "$search_root" -type f -name AirFliq.pkg -print -quit)"
+fi
+
+if [ -d "$search_root/Contents" ] && [ "$(basename "$search_root")" = "AirFliq.app" ]; then
+  app="$search_root"
+else
+  app="$(find "$search_root" -type d -name AirFliq.app -print -quit)"
+fi
+
+if [ -z "${app:-}" ] && [ -n "$package" ]; then
+  if [ -z "$temporary_root" ]; then
+    temporary_root="$(mktemp -d "${TMPDIR:-/tmp}/airfliq-cloud-export.XXXXXX")"
+  fi
+  expanded_package="$temporary_root/expanded-package"
+  /usr/sbin/pkgutil --expand-full "$package" "$expanded_package"
+  app="$(find "$expanded_package" -type d -name AirFliq.app -print -quit)"
+fi
+
 [ -n "${app:-}" ] || {
   echo "ci_post_xcodebuild: AirFliq.app was not found in the archive" >&2
   exit 1
 }
 
-"$repo_root/scripts/verify-app-store-build.sh" --skip-package "$app"
+if [ -n "$package" ]; then
+  "$repo_root/scripts/verify-app-store-build.sh" "$app" "$package"
+else
+  "$repo_root/scripts/verify-app-store-build.sh" --skip-package "$app"
+fi
 echo "ci_post_xcodebuild: signed App Store product verified"

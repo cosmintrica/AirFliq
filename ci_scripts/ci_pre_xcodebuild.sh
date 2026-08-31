@@ -28,7 +28,24 @@ fi
 
 repo_root="${CI_PRIMARY_REPOSITORY_PATH:?ci_pre_xcodebuild: CI_PRIMARY_REPOSITORY_PATH is required}"
 test -d "$repo_root/Vendor/RevenueCat/RevenueCat.xcframework"
-test -s "$repo_root/Configurations/Secrets.xcconfig"
+secret_file="$repo_root/Configurations/Secrets.xcconfig"
+test -s "$secret_file"
+resolved_revenuecat_key="$(
+  sed -n 's/^[[:space:]]*AIRFLIQ_REVENUECAT_API_KEY[[:space:]]*=[[:space:]]*//p' \
+    "$secret_file" | tail -n 1
+)"
+case "$resolved_revenuecat_key" in
+  appl_*|mac_*) ;;
+  *)
+    echo "ci_pre_xcodebuild: Secrets.xcconfig has no production RevenueCat public SDK key" >&2
+    exit 1
+    ;;
+esac
+if grep -Eq '^[[:space:]]*AIRFLIQ_REVENUECAT_API_KEY[[:space:]]*=' \
+    "$repo_root/AirFliq.xcodeproj/project.pbxproj"; then
+  echo "ci_pre_xcodebuild: project build settings override the RevenueCat secret" >&2
+  exit 1
+fi
 "$repo_root/scripts/verify-trial-policy.sh"
 plutil -lint \
   "$repo_root/Resources/App-Info.plist" \

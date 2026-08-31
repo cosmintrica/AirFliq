@@ -485,7 +485,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 56C00DBFA9B49902AE33CE3D /* Release.xcconfig */;
 			buildSettings = {
-				AIRFLIQ_REVENUECAT_API_KEY = "";
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ARCHS = "arm64 x86_64";
 				CLANG_ANALYZER_NONNULL = YES;
@@ -553,7 +552,6 @@
 		F0A3E7B5CAF3BE01D8143564 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				AIRFLIQ_REVENUECAT_API_KEY = "";
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;

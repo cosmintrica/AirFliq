@@ -25,7 +25,6 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
     DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
     DEVELOPMENT_TEAM: 9Z94H4ZMRW
-    AIRFLIQ_REVENUECAT_API_KEY: ""
     MARKETING_VERSION: "1.0.0"
     OTHER_SWIFT_FLAGS: "$(inherited) -warn-concurrency"
     SWIFT_STRICT_CONCURRENCY: complete

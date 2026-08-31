@@ -105,6 +105,7 @@ APP_BUNDLE_ID="$(plist_value "$APP/Contents/Info.plist" CFBundleIdentifier)"
 EXT_BUNDLE_ID="$(plist_value "$EXT/Contents/Info.plist" CFBundleIdentifier)"
 APP_VERSION="$(plist_value "$APP/Contents/Info.plist" CFBundleShortVersionString)"
 APP_BUILD="$(plist_value "$APP/Contents/Info.plist" CFBundleVersion)"
+APP_REVENUECAT_KEY="$(plist_value "$APP/Contents/Info.plist" AirFliqRevenueCatAPIKey || true)"
 EXT_VERSION="$(plist_value "$EXT/Contents/Info.plist" CFBundleShortVersionString)"
 EXT_BUILD="$(plist_value "$EXT/Contents/Info.plist" CFBundleVersion)"
 EXT_LSUIELEMENT="$(plist_value "$EXT/Contents/Info.plist" LSUIElement)"
@@ -119,6 +120,11 @@ EXT_LSUIELEMENT="$(plist_value "$EXT/Contents/Info.plist" LSUIElement)"
     fail "unexpected extension bundle ID: $EXT_BUNDLE_ID"
 [ "$EXT_LSUIELEMENT" = "true" ] || \
     fail "Finder extension LSUIElement must be true"
+case "$APP_REVENUECAT_KEY" in
+    appl_*|mac_*) ;;
+    test_*) fail "App Store build embeds a RevenueCat Test Store key" ;;
+    *) fail "App Store build has no production RevenueCat public SDK key" ;;
+esac
 [ "$APP_VERSION" = "$EXT_VERSION" ] || \
     fail "app and extension marketing versions differ"
 [ "$APP_BUILD" = "$EXT_BUILD" ] || \

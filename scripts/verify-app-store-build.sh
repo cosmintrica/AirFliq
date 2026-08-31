@@ -107,6 +107,7 @@ APP_VERSION="$(plist_value "$APP/Contents/Info.plist" CFBundleShortVersionString
 APP_BUILD="$(plist_value "$APP/Contents/Info.plist" CFBundleVersion)"
 EXT_VERSION="$(plist_value "$EXT/Contents/Info.plist" CFBundleShortVersionString)"
 EXT_BUILD="$(plist_value "$EXT/Contents/Info.plist" CFBundleVersion)"
+EXT_LSUIELEMENT="$(plist_value "$EXT/Contents/Info.plist" LSUIElement)"
 
 [[ "$APP_VERSION" =~ ^[0-9]+([.][0-9]+){0,2}$ ]] || \
     fail "invalid marketing version: $APP_VERSION"
@@ -116,6 +117,8 @@ EXT_BUILD="$(plist_value "$EXT/Contents/Info.plist" CFBundleVersion)"
     fail "unexpected app bundle ID: $APP_BUNDLE_ID"
 [ "$EXT_BUNDLE_ID" = "com.cosmintrica.airfliq.finder" ] || \
     fail "unexpected extension bundle ID: $EXT_BUNDLE_ID"
+[ "$EXT_LSUIELEMENT" = "true" ] || \
+    fail "Finder extension LSUIElement must be true"
 [ "$APP_VERSION" = "$EXT_VERSION" ] || \
     fail "app and extension marketing versions differ"
 [ "$APP_BUILD" = "$EXT_BUILD" ] || \

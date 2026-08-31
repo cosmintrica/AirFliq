@@ -35,5 +35,9 @@ plutil -lint \
   "$repo_root/Resources/Ext-Info.plist" \
   "$repo_root/Resources/AppStore-App.entitlements" \
   "$repo_root/Resources/Ext.entitlements" >/dev/null
+[ "$(plutil -extract LSUIElement raw -o - "$repo_root/Resources/Ext-Info.plist")" = "true" ] || {
+  echo "ci_pre_xcodebuild: Finder extension LSUIElement must be true for App Store validation" >&2
+  exit 1
+}
 
 echo "ci_pre_xcodebuild: stable Xcode 26.x App Store archive contract verified"

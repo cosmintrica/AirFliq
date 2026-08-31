@@ -1,6 +1,8 @@
 .DS_Store
 /build/
 Vendor/RevenueCat/RevenueCat.xcframework/
+Configurations/Secrets.xcconfig
+**/xcuserdata/
 *.provisionprofile
 *.p8
 *.cer

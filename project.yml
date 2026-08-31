@@ -1,0 +1,128 @@
+# XcodeGen spec for the App Store/Xcode Cloud build.
+# Keep the generated AirFliq.xcodeproj and shared scheme in source control:
+# Xcode Cloud requires a stable project during product discovery.
+name: AirFliq
+
+configs:
+  Debug: debug
+  Release: release
+
+configFiles:
+  Release: Configurations/Release.xcconfig
+
+options:
+  minimumXcodeGenVersion: 2.45.4
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "13.0"
+  developmentLanguage: en
+  projectFormat: xcode16_3
+  xcodeVersion: "26.6"
+
+settings:
+  base:
+    CODE_SIGN_STYLE: Automatic
+    CURRENT_PROJECT_VERSION: "1"
+    DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+    DEVELOPMENT_TEAM: 9Z94H4ZMRW
+    AIRFLIQ_REVENUECAT_API_KEY: ""
+    MARKETING_VERSION: "1.0.0"
+    OTHER_SWIFT_FLAGS: "$(inherited) -warn-concurrency"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
+    SWIFT_VERSION: "6.0"
+  configs:
+    Release:
+      ARCHS: "arm64 x86_64"
+      ENABLE_HARDENED_RUNTIME: YES
+      ONLY_ACTIVE_ARCH: NO
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) MAC_APP_STORE"
+
+targets:
+  AirFliq:
+    type: application
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: Sources/App
+      - path: Sources/Shared
+      - path: Resources/AppIcon.icns
+        buildPhase: resources
+      - path: Resources/PrivacyInfo.xcprivacy
+        buildPhase: resources
+    settings:
+      base:
+        CODE_SIGN_ENTITLEMENTS: Resources/AppStore-App.entitlements
+        ENABLE_APP_SANDBOX: YES
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Resources/App-Info.plist
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+        PRODUCT_BUNDLE_IDENTIFIER: com.cosmintrica.airfliq
+        PRODUCT_MODULE_NAME: AirFliq
+        PRODUCT_NAME: AirFliq
+        SKIP_INSTALL: NO
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        # The vendored binary exposes legacy StoreKit declarations in its
+        # generated Objective-C header. Xcode 27's explicit-module precompiler
+        # upgrades those third-party deprecations to errors when AirFliq treats
+        # its own Swift warnings as errors. The normal Clang module importer is
+        # compatible with RevenueCat 5.82.0 and keeps AirFliq's strict policy.
+        SWIFT_ENABLE_EXPLICIT_MODULES: NO
+    dependencies:
+      - target: AirFliqFinder
+        embed: true
+      # RevenueCat ships a complete, checksum-pinned XCFramework. Link its
+      # universal macOS slice directly: Xcode 27 beta rejects the vendor's
+      # outer bundle signature in strict mode, while the embedded framework is
+      # re-signed by the AirFliq target as required for App Store distribution.
+      - framework: Vendor/RevenueCat/RevenueCat.xcframework/macos-arm64_x86_64/RevenueCat.framework
+        embed: true
+        codeSign: true
+      - sdk: Cocoa.framework
+      - sdk: Carbon.framework
+      - sdk: FinderSync.framework
+      - sdk: ServiceManagement.framework
+      - sdk: Security.framework
+      - sdk: QuartzCore.framework
+
+  AirFliqFinder:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "13.0"
+    sources:
+      - path: Sources/FinderExt
+      - path: Sources/Shared
+    settings:
+      base:
+        APPLICATION_EXTENSION_API_ONLY: YES
+        CODE_SIGN_ENTITLEMENTS: Resources/Ext.entitlements
+        COMBINE_HIDPI_IMAGES: YES
+        ENABLE_APP_SANDBOX: YES
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Resources/Ext-Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.cosmintrica.airfliq.finder
+        PRODUCT_MODULE_NAME: AirFliqFinder
+        PRODUCT_NAME: AirFliqFinder
+        SKIP_INSTALL: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+    dependencies:
+      - sdk: Cocoa.framework
+      - sdk: FinderSync.framework
+
+schemes:
+  AirFliq:
+    build:
+      targets:
+        AirFliq: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
+    management:
+      shared: true
+      isShown: true
+      orderHint: 0

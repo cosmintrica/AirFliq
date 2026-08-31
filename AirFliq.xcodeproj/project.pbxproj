@@ -1,0 +1,657 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 90;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0334167598B1F5AE39B0360B /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20C6881A728427CD366AAE /* main.swift */; };
+		07742989A9755F11AEEB4BF9 /* RevenueCat.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2437C61EA90AD4CE88782CB1 /* RevenueCat.framework */; };
+		0969AB3644448897A738776F /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 280F771BD68B21A9837F3B92 /* Motion.swift */; };
+		1842B1B7067340B45109A6B3 /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 584933B40421F8D3458AA3AB /* Permissions.swift */; };
+		1F1FF5B53FF50C8B74DDFDBB /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 0244C3524FAF3273945F2079 /* AppIcon.icns */; };
+		216A23D354029E16B567A748 /* PaywallWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C0F5D22C3C4A11305108F3 /* PaywallWindow.swift */; };
+		21E635974F538EDCAF9342F1 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72F78A9758D0889D77DF8FFD /* AppDelegate.swift */; };
+		222C020A282814BD248F0EA8 /* FinderSyncExt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFE954B6B9D3AB5D9B149B0 /* FinderSyncExt.swift */; };
+		2ECC06A4DFFC8C5166710573 /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BE07243A6222B892A5CEFA6B /* ServiceManagement.framework */; };
+		34A4F50A0E869CAE53CC1682 /* StatusDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55FDB29A845146C59C2C7927 /* StatusDropView.swift */; };
+		3AD087B8E0797100BC7C95F9 /* OnboardingWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2582827FFD84C7379767461E /* OnboardingWindow.swift */; };
+		60B73DBB21AE2F1273FAAF42 /* DropBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6865AC2EA9472B06484B517 /* DropBubble.swift */; };
+		711FA82CB3C39171F061F8C3 /* ShortcutRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8C3E6237C4B77E0E20BA163 /* ShortcutRecorder.swift */; };
+		7316D5686188050A88C91E73 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3C7DB5FF9D8124F66B369479 /* Security.framework */; };
+		80066BA95EE2B34414A2CDC3 /* AirFliqFinder.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 813B3154BD53DD220120E6FB /* AirFliqFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		80C4FA7B7616C9D6F76D67F2 /* Toast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3841B5251F0F7B7FF54283 /* Toast.swift */; };
+		870EDF8EE10EB80767D5F301 /* Monetization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145EBAA0B218757001954E9F /* Monetization.swift */; };
+		971B5D16529C03AED420C98E /* DragCatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D64C4214862FAFCD2D480F6E /* DragCatcher.swift */; };
+		9E4CFA4D194A7F238B4713FD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5CBC583C05CE06F5AF521FAF /* PrivacyInfo.xcprivacy */; };
+		A15812CF3E43A65CAE65FDEB /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 259D0E545A3814464756EFF4 /* Cocoa.framework */; };
+		A517BDEF04CEA1774047B0F7 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 259D0E545A3814464756EFF4 /* Cocoa.framework */; };
+		A724472D937E054FBB9CCBC8 /* AboutWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F972A5E311A65B5D5EF026 /* AboutWindow.swift */; };
+		B0C382938AB6AA9A6EDFB605 /* FinderSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B3700630C6C0F1EF2E43167 /* FinderSelection.swift */; };
+		BBC8D031E3B624F64BB88D33 /* FinderSync.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 791F9AEBD689108BB40E487F /* FinderSync.framework */; };
+		BD0F1CB45CBC32740D7FA9C3 /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E1AE7BE729EDFBA8066B24 /* HotKey.swift */; };
+		BF3E76E3C5440CC6B2B93E2E /* AirDropIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5A91F6C1F77C87519C542D /* AirDropIcon.swift */; };
+		D382D6CBB741ECEA6AEA54A1 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2D586678BE2108EF9AC6CC68 /* QuartzCore.framework */; };
+		D84D6CB81CB1BA4C56AE2C17 /* TrialPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139D104A23274878C62E5BEB /* TrialPersistence.swift */; };
+		DCC86D610D1EE38E0B5BA9D9 /* MenuPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA8BC6A1C0D17F05907B8FE9 /* MenuPanel.swift */; };
+		DDBC6722A2A0719B3F8FAF94 /* AirDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74D8AD7AAF075814B0202718 /* AirDrop.swift */; };
+		EB7AB901D277FAE9AE66DEC5 /* FinderSync.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 791F9AEBD689108BB40E487F /* FinderSync.framework */; };
+		ECF236E844FFEE53A2122D02 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95D68AEDA35CFF2D9DF8F281 /* Carbon.framework */; };
+		EEF9FC18EC178BF4358213D4 /* RevenueCat.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 2437C61EA90AD4CE88782CB1 /* RevenueCat.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		EF59628A5ACB90F40803A7CE /* AirDropIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5A91F6C1F77C87519C542D /* AirDropIcon.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6AA78CF2307D914A21B39FF5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5DFA9386701D81B1DE225E0D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3ED8F57D3622C962C13920B2;
+			remoteInfo = AirFliqFinder;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		00E95E61C8F2BECDB35F4A09 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				EEF9FC18EC178BF4358213D4 /* RevenueCat.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B70D84DB3BF204ECD88C0843 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				80066BA95EE2B34414A2CDC3 /* AirFliqFinder.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0244C3524FAF3273945F2079 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		0A5A91F6C1F77C87519C542D /* AirDropIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirDropIcon.swift; sourceTree = "<group>"; };
+		139D104A23274878C62E5BEB /* TrialPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialPersistence.swift; sourceTree = "<group>"; };
+		145EBAA0B218757001954E9F /* Monetization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Monetization.swift; sourceTree = "<group>"; };
+		2437C61EA90AD4CE88782CB1 /* RevenueCat.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = RevenueCat.framework; path = "Vendor/RevenueCat/RevenueCat.xcframework/macos-arm64_x86_64/RevenueCat.framework"; sourceTree = "<group>"; };
+		2582827FFD84C7379767461E /* OnboardingWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWindow.swift; sourceTree = "<group>"; };
+		259D0E545A3814464756EFF4 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		280F771BD68B21A9837F3B92 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion.swift; sourceTree = "<group>"; };
+		2D586678BE2108EF9AC6CC68 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		3C7DB5FF9D8124F66B369479 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		42C0F5D22C3C4A11305108F3 /* PaywallWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallWindow.swift; sourceTree = "<group>"; };
+		50845A3769AA6D9D18671E29 /* AirFliq.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AirFliq.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		55FDB29A845146C59C2C7927 /* StatusDropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusDropView.swift; sourceTree = "<group>"; };
+		56C00DBFA9B49902AE33CE3D /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		584933B40421F8D3458AA3AB /* Permissions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Permissions.swift; sourceTree = "<group>"; };
+		5CBC583C05CE06F5AF521FAF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		6B3700630C6C0F1EF2E43167 /* FinderSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSelection.swift; sourceTree = "<group>"; };
+		72F78A9758D0889D77DF8FFD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		74D8AD7AAF075814B0202718 /* AirDrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirDrop.swift; sourceTree = "<group>"; };
+		76F972A5E311A65B5D5EF026 /* AboutWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindow.swift; sourceTree = "<group>"; };
+		791F9AEBD689108BB40E487F /* FinderSync.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FinderSync.framework; path = System/Library/Frameworks/FinderSync.framework; sourceTree = SDKROOT; };
+		813B3154BD53DD220120E6FB /* AirFliqFinder.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AirFliqFinder.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8AFE954B6B9D3AB5D9B149B0 /* FinderSyncExt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSyncExt.swift; sourceTree = "<group>"; };
+		95D68AEDA35CFF2D9DF8F281 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
+		9F3841B5251F0F7B7FF54283 /* Toast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toast.swift; sourceTree = "<group>"; };
+		AA20C6881A728427CD366AAE /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
+		B6865AC2EA9472B06484B517 /* DropBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropBubble.swift; sourceTree = "<group>"; };
+		BA8BC6A1C0D17F05907B8FE9 /* MenuPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuPanel.swift; sourceTree = "<group>"; };
+		BE07243A6222B892A5CEFA6B /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
+		D64C4214862FAFCD2D480F6E /* DragCatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragCatcher.swift; sourceTree = "<group>"; };
+		D8C3E6237C4B77E0E20BA163 /* ShortcutRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorder.swift; sourceTree = "<group>"; };
+		F8E1AE7BE729EDFBA8066B24 /* HotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotKey.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5876C1E8974C958EB573306D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				07742989A9755F11AEEB4BF9 /* RevenueCat.framework in Frameworks */,
+				A15812CF3E43A65CAE65FDEB /* Cocoa.framework in Frameworks */,
+				ECF236E844FFEE53A2122D02 /* Carbon.framework in Frameworks */,
+				EB7AB901D277FAE9AE66DEC5 /* FinderSync.framework in Frameworks */,
+				2ECC06A4DFFC8C5166710573 /* ServiceManagement.framework in Frameworks */,
+				7316D5686188050A88C91E73 /* Security.framework in Frameworks */,
+				D382D6CBB741ECEA6AEA54A1 /* QuartzCore.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FFD8EBA9EC4A1F2DEF36DBF3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A517BDEF04CEA1774047B0F7 /* Cocoa.framework in Frameworks */,
+				BBC8D031E3B624F64BB88D33 /* FinderSync.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4C04505421A4131614D8668D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0244C3524FAF3273945F2079 /* AppIcon.icns */,
+				5CBC583C05CE06F5AF521FAF /* PrivacyInfo.xcprivacy */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		5465855794390C14678DE7E6 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				50845A3769AA6D9D18671E29 /* AirFliq.app */,
+				813B3154BD53DD220120E6FB /* AirFliqFinder.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		762A59EF6F5C7629FBB9737C /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				0A5A91F6C1F77C87519C542D /* AirDropIcon.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		82A76872FA0A412086418570 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				9814A79C2B5D9D1E1F8D21D1 /* App */,
+				CBC3A7005518985411CFC26E /* FinderExt */,
+				762A59EF6F5C7629FBB9737C /* Shared */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		9814A79C2B5D9D1E1F8D21D1 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				76F972A5E311A65B5D5EF026 /* AboutWindow.swift */,
+				74D8AD7AAF075814B0202718 /* AirDrop.swift */,
+				72F78A9758D0889D77DF8FFD /* AppDelegate.swift */,
+				D64C4214862FAFCD2D480F6E /* DragCatcher.swift */,
+				B6865AC2EA9472B06484B517 /* DropBubble.swift */,
+				6B3700630C6C0F1EF2E43167 /* FinderSelection.swift */,
+				F8E1AE7BE729EDFBA8066B24 /* HotKey.swift */,
+				AA20C6881A728427CD366AAE /* main.swift */,
+				BA8BC6A1C0D17F05907B8FE9 /* MenuPanel.swift */,
+				145EBAA0B218757001954E9F /* Monetization.swift */,
+				280F771BD68B21A9837F3B92 /* Motion.swift */,
+				2582827FFD84C7379767461E /* OnboardingWindow.swift */,
+				42C0F5D22C3C4A11305108F3 /* PaywallWindow.swift */,
+				584933B40421F8D3458AA3AB /* Permissions.swift */,
+				D8C3E6237C4B77E0E20BA163 /* ShortcutRecorder.swift */,
+				55FDB29A845146C59C2C7927 /* StatusDropView.swift */,
+				9F3841B5251F0F7B7FF54283 /* Toast.swift */,
+				139D104A23274878C62E5BEB /* TrialPersistence.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		C46FB27AD6F1B71D408A74B4 = {
+			isa = PBXGroup;
+			children = (
+				CFF886304886A2A487B2EACD /* Configurations */,
+				4C04505421A4131614D8668D /* Resources */,
+				82A76872FA0A412086418570 /* Sources */,
+				E3111DF0E8DBFAE8316B20CB /* Frameworks */,
+				5465855794390C14678DE7E6 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CBC3A7005518985411CFC26E /* FinderExt */ = {
+			isa = PBXGroup;
+			children = (
+				8AFE954B6B9D3AB5D9B149B0 /* FinderSyncExt.swift */,
+			);
+			path = FinderExt;
+			sourceTree = "<group>";
+		};
+		CFF886304886A2A487B2EACD /* Configurations */ = {
+			isa = PBXGroup;
+			children = (
+				56C00DBFA9B49902AE33CE3D /* Release.xcconfig */,
+			);
+			path = Configurations;
+			sourceTree = "<group>";
+		};
+		E3111DF0E8DBFAE8316B20CB /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				95D68AEDA35CFF2D9DF8F281 /* Carbon.framework */,
+				259D0E545A3814464756EFF4 /* Cocoa.framework */,
+				791F9AEBD689108BB40E487F /* FinderSync.framework */,
+				2D586678BE2108EF9AC6CC68 /* QuartzCore.framework */,
+				2437C61EA90AD4CE88782CB1 /* RevenueCat.framework */,
+				3C7DB5FF9D8124F66B369479 /* Security.framework */,
+				BE07243A6222B892A5CEFA6B /* ServiceManagement.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		01F27B826A60B7D871749B49 /* AirFliq */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D004B81FEB9F9DF594EF3E2 /* Build configuration list for PBXNativeTarget "AirFliq" */;
+			buildPhases = (
+				96B7AF923866BF1609ECBCBF /* Sources */,
+				4D8DD7F9FC5D102F2E005EC1 /* Resources */,
+				5876C1E8974C958EB573306D /* Frameworks */,
+				B70D84DB3BF204ECD88C0843 /* Embed Foundation Extensions */,
+				00E95E61C8F2BECDB35F4A09 /* Embed Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B4DD8EA959F084121966FE9E /* PBXTargetDependency */,
+			);
+			name = AirFliq;
+			packageProductDependencies = (
+			);
+			productName = AirFliq;
+			productReference = 50845A3769AA6D9D18671E29 /* AirFliq.app */;
+			productType = "com.apple.product-type.application";
+		};
+		3ED8F57D3622C962C13920B2 /* AirFliqFinder */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F05210609BC3431AC9671312 /* Build configuration list for PBXNativeTarget "AirFliqFinder" */;
+			buildPhases = (
+				8E5412F31604346BE6917EED /* Sources */,
+				FFD8EBA9EC4A1F2DEF36DBF3 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AirFliqFinder;
+			packageProductDependencies = (
+			);
+			productName = AirFliqFinder;
+			productReference = 813B3154BD53DD220120E6FB /* AirFliqFinder.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5DFA9386701D81B1DE225E0D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					01F27B826A60B7D871749B49 = {
+						DevelopmentTeam = 9Z94H4ZMRW;
+						ProvisioningStyle = Automatic;
+					};
+					3ED8F57D3622C962C13920B2 = {
+						DevelopmentTeam = 9Z94H4ZMRW;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 53F37C02FC7B2981D6DD4002 /* Build configuration list for PBXProject "AirFliq" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = C46FB27AD6F1B71D408A74B4;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 90;
+			productRefGroup = 5465855794390C14678DE7E6 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				01F27B826A60B7D871749B49 /* AirFliq */,
+				3ED8F57D3622C962C13920B2 /* AirFliqFinder */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4D8DD7F9FC5D102F2E005EC1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1F1FF5B53FF50C8B74DDFDBB /* AppIcon.icns in Resources */,
+				9E4CFA4D194A7F238B4713FD /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8E5412F31604346BE6917EED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF3E76E3C5440CC6B2B93E2E /* AirDropIcon.swift in Sources */,
+				222C020A282814BD248F0EA8 /* FinderSyncExt.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		96B7AF923866BF1609ECBCBF /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A724472D937E054FBB9CCBC8 /* AboutWindow.swift in Sources */,
+				DDBC6722A2A0719B3F8FAF94 /* AirDrop.swift in Sources */,
+				EF59628A5ACB90F40803A7CE /* AirDropIcon.swift in Sources */,
+				21E635974F538EDCAF9342F1 /* AppDelegate.swift in Sources */,
+				971B5D16529C03AED420C98E /* DragCatcher.swift in Sources */,
+				60B73DBB21AE2F1273FAAF42 /* DropBubble.swift in Sources */,
+				B0C382938AB6AA9A6EDFB605 /* FinderSelection.swift in Sources */,
+				BD0F1CB45CBC32740D7FA9C3 /* HotKey.swift in Sources */,
+				DCC86D610D1EE38E0B5BA9D9 /* MenuPanel.swift in Sources */,
+				870EDF8EE10EB80767D5F301 /* Monetization.swift in Sources */,
+				0969AB3644448897A738776F /* Motion.swift in Sources */,
+				3AD087B8E0797100BC7C95F9 /* OnboardingWindow.swift in Sources */,
+				216A23D354029E16B567A748 /* PaywallWindow.swift in Sources */,
+				1842B1B7067340B45109A6B3 /* Permissions.swift in Sources */,
+				711FA82CB3C39171F061F8C3 /* ShortcutRecorder.swift in Sources */,
+				34A4F50A0E869CAE53CC1682 /* StatusDropView.swift in Sources */,
+				80C4FA7B7616C9D6F76D67F2 /* Toast.swift in Sources */,
+				D84D6CB81CB1BA4C56AE2C17 /* TrialPersistence.swift in Sources */,
+				0334167598B1F5AE39B0360B /* main.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B4DD8EA959F084121966FE9E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3ED8F57D3622C962C13920B2 /* AirFliqFinder */;
+			targetProxy = 6AA78CF2307D914A21B39FF5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		54F8DFB358F5F416F511AD03 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Resources/Ext.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Resources/Ext-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cosmintrica.airfliq.finder;
+				PRODUCT_MODULE_NAME = AirFliqFinder;
+				PRODUCT_NAME = AirFliqFinder;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+			};
+			name = Debug;
+		};
+		7CF4BE0D281D0443EA271792 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Resources/AppStore-App.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Vendor/RevenueCat/RevenueCat.xcframework/macos-arm64_x86_64\"",
+				);
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Resources/App-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cosmintrica.airfliq;
+				PRODUCT_MODULE_NAME = AirFliq;
+				PRODUCT_NAME = AirFliq;
+				SDKROOT = macosx;
+				SKIP_INSTALL = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
+			};
+			name = Debug;
+		};
+		9FE2AAE0F73088AF6D52D903 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Resources/AppStore-App.entitlements";
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"Vendor/RevenueCat/RevenueCat.xcframework/macos-arm64_x86_64\"",
+				);
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Resources/App-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cosmintrica.airfliq;
+				PRODUCT_MODULE_NAME = AirFliq;
+				PRODUCT_NAME = AirFliq;
+				SDKROOT = macosx;
+				SKIP_INSTALL = NO;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_ENABLE_EXPLICIT_MODULES = NO;
+			};
+			name = Release;
+		};
+		BA4C52CD0EEAE1C4DABC9660 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = Resources/Ext.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "Resources/Ext-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cosmintrica.airfliq.finder;
+				PRODUCT_MODULE_NAME = AirFliqFinder;
+				PRODUCT_NAME = AirFliqFinder;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+			};
+			name = Release;
+		};
+		DBD736D4876A0EE56932B672 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 56C00DBFA9B49902AE33CE3D /* Release.xcconfig */;
+			buildSettings = {
+				AIRFLIQ_REVENUECAT_API_KEY = "";
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "arm64 x86_64";
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 9Z94H4ZMRW;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_SWIFT_FLAGS = "$(inherited) -warn-concurrency";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MAC_APP_STORE";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		F0A3E7B5CAF3BE01D8143564 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AIRFLIQ_REVENUECAT_API_KEY = "";
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 9Z94H4ZMRW;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_SWIFT_FLAGS = "$(inherited) -warn-concurrency";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1D004B81FEB9F9DF594EF3E2 /* Build configuration list for PBXNativeTarget "AirFliq" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7CF4BE0D281D0443EA271792 /* Debug */,
+				9FE2AAE0F73088AF6D52D903 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		53F37C02FC7B2981D6DD4002 /* Build configuration list for PBXProject "AirFliq" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F0A3E7B5CAF3BE01D8143564 /* Debug */,
+				DBD736D4876A0EE56932B672 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F05210609BC3431AC9671312 /* Build configuration list for PBXNativeTarget "AirFliqFinder" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				54F8DFB358F5F416F511AD03 /* Debug */,
+				BA4C52CD0EEAE1C4DABC9660 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 5DFA9386701D81B1DE225E0D /* Project object */;
+}

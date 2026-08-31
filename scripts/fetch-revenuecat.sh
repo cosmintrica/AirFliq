@@ -42,11 +42,9 @@ fi
 /usr/bin/unzip -tq "$ARCHIVE"
 /usr/bin/ditto -x -k "$ARCHIVE" "$UNPACKED"
 
-echo "▸ Installing the universal macOS framework"
+echo "▸ Installing the signed RevenueCat XCFramework"
 rm -rf "$TARGET"
-mkdir -p "$TARGET"
 /usr/bin/ditto \
-  "$UNPACKED/RevenueCat.xcframework/macos-arm64_x86_64" \
-  "$TARGET/macos-arm64_x86_64"
-cp "$UNPACKED/RevenueCat.xcframework/Info.plist" "$TARGET/Info.plist"
+  "$UNPACKED/RevenueCat.xcframework" \
+  "$TARGET"
 echo "✅ RevenueCat is ready."

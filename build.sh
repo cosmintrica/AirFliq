@@ -43,8 +43,11 @@ EXT_PROFILE="${EXT_PROFILE:-}"
 REVENUECAT_API_KEY="${REVENUECAT_API_KEY:-}"
 REVENUECAT_KEYCHAIN_SERVICE="${REVENUECAT_KEYCHAIN_SERVICE:-com.cosmintrica.airfliq.revenuecat.production}"
 BUILD_CONFIGURATION="${BUILD_CONFIGURATION:-Development}"
-MARKETING_VERSION="${MARKETING_VERSION:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$ROOT/Resources/App-Info.plist")}"
-BUILD_NUMBER="${BUILD_NUMBER:-$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$ROOT/Resources/App-Info.plist")}"
+# The source plists use Xcode build-setting placeholders so the Xcode Cloud
+# archive can keep the host app and Finder extension versions in lockstep.
+# Retain deterministic defaults for this standalone swiftc build path.
+MARKETING_VERSION="${MARKETING_VERSION:-1.0.0}"
+BUILD_NUMBER="${BUILD_NUMBER:-1}"
 SWIFT_DEFINES=()
 
 if [ "${MARKETING_CAPTURE:-0}" = "1" ]; then
@@ -190,14 +193,20 @@ echo "  arm64 + x86_64 verified"
 echo "▸ Copying plists"
 cp "$ROOT/Resources/App-Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/Ext-Info.plist" "$EXT/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleExecutable AirFliq" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.cosmintrica.airfliq" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MARKETING_VERSION" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleExecutable AirFliqFinder" "$EXT/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.cosmintrica.airfliq.finder" "$EXT/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $MARKETING_VERSION" "$EXT/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$EXT/Contents/Info.plist"
 cp "$ROOT/Resources/PrivacyInfo.xcprivacy" "$APP/Contents/Resources/PrivacyInfo.xcprivacy"
 cp -R "$REVENUECAT_FRAMEWORK" "$APP/Contents/Frameworks/RevenueCat.framework"
 if [ "$REVENUECAT_API_KEY" != "" ]; then
-    /usr/libexec/PlistBuddy -c "Add :AirFliqRevenueCatAPIKey string $REVENUECAT_API_KEY" "$APP/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Set :AirFliqRevenueCatAPIKey $REVENUECAT_API_KEY" "$APP/Contents/Info.plist"
+else
+    /usr/libexec/PlistBuddy -c "Delete :AirFliqRevenueCatAPIKey" "$APP/Contents/Info.plist"
 fi
 if [ "$APP_PROFILE" != "" ]; then
     cp "$APP_PROFILE" "$APP/Contents/embedded.provisionprofile"

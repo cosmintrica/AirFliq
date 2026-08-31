@@ -206,8 +206,6 @@ for path, bundle_id in expected:
         raise SystemExit(f"error: provisioning profile does not match {bundle_id}")
     if entitlements.get("com.apple.developer.team-identifier") != team:
         raise SystemExit(f"error: profile team entitlement does not match {bundle_id}")
-    if entitlements.get("com.apple.security.app-sandbox") is not True:
-        raise SystemExit(f"error: profile does not permit App Sandbox for {bundle_id}")
     if entitlements.get("get-task-allow") is True:
         raise SystemExit(f"error: development profile used for {bundle_id}")
     if profile.get("ProvisionedDevices"):

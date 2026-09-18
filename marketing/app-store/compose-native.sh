@@ -129,6 +129,18 @@ prepare_capture() {
     local geometry="$2"
     local output="$3"
 
+    # Crop the photographed window footer from marketing images only. The
+    # shipping app retains its original pricing footer and all visual styles.
+    # These captures come from the 660pt native window (without outer shadows).
+    case "${input:t}" in
+        onboarding-ready.png|onboarding-shortcut.png)
+            local w h
+            read w h <<< "$(magick identify -format '%w %h' "$input")"
+            magick "$input" -crop "${w}x$((h - w * 110 / 660))+0+$((w * 32 / 660))" +repage "$TMP/setup-detail.png"
+            input="$TMP/setup-detail.png"
+            ;;
+    esac
+
     magick "$input" \
         -filter Lanczos -resize "$geometry" \
         -unsharp 0x0.55+0.5+0.02 \
@@ -154,10 +166,10 @@ render_ready() {
     add_copy "$TMP/brand.png" \
         'AIR DROP, ACCELERATED' \
         'AirDrop.' 'One move.' \
-        'Select in Finder. Press your shortcut. The native AirDrop panel is ready instantly.' \
+        'Choose files with your shortcut. Or send a Finder selection with right-click and drag-and-drop.' \
         '#4bd7ff' "$TMP/copy-ready.png"
     add_pills "$TMP/copy-ready.png" 'macOS 13+' 'Universal' 'Native AirDrop' "$TMP/pills-ready.png"
-    prepare_capture "$NATIVE/onboarding-ready.png" '1460x1350>' "$TMP/capture-ready.png"
+    prepare_capture "$NATIVE/onboarding-ready.png" '1380x1280' "$TMP/capture-ready.png"
 
     magick "$TMP/pills-ready.png" "$TMP/capture-ready.png" \
         -gravity northwest -geometry +1270+205 -compose over -composite \
@@ -175,8 +187,8 @@ render_drag() {
     add_pills "$TMP/copy-drag.png" 'Appears nearby' 'Drop anywhere' 'Instant handoff' "$TMP/pills-drag.png"
 
     # There is no fabricated completion state. The composition pairs the real
-    # menu capture with the real drag-hover capture already recorded from AirFliq.
-    prepare_capture "$NATIVE/menu-panel.png" '930x960' "$TMP/capture-menu-drag.png"
+    # setup capture with the real drag-hover capture already recorded from AirFliq.
+    prepare_capture "$NATIVE/onboarding-ready.png" '930x960' "$TMP/capture-menu-drag.png"
     # Keep the compact native drag target close to its Retina capture size.
     # Enlarging this 454x240 window to card scale softens its type and icon.
     prepare_capture "$NATIVE/drag-target-hover.png" '560x296' "$TMP/capture-hover.png"
@@ -199,8 +211,8 @@ render_menu() {
         'Four ways.' 'One AirDrop.' \
         "Shortcut, right-click, drag target or menu bar. Every path opens Apple's familiar panel." \
         '#45d5ff' "$TMP/copy-menu.png"
-    add_pills "$TMP/copy-menu.png" 'No account' 'No subscription' '$4.99 lifetime' "$TMP/pills-menu.png"
-    prepare_capture "$NATIVE/menu-panel.png" '1110x1144' "$TMP/capture-menu.png"
+    add_pills "$TMP/copy-menu.png" 'Choose files' 'Multiple items' 'Native AirDrop' "$TMP/pills-menu.png"
+    prepare_capture "$NATIVE/file-picker.png" '1110x1144' "$TMP/capture-menu.png"
 
     magick "$TMP/pills-menu.png" \
         \( -size 1440x1400 xc:none \
@@ -220,7 +232,7 @@ render_shortcut() {
         'Choose a preset or record the global combination that already feels natural.' \
         '#8a6cff' "$TMP/copy-shortcut.png"
     add_pills "$TMP/copy-shortcut.png" 'Eight presets' 'Custom keys' 'Global access' "$TMP/pills-shortcut.png"
-    prepare_capture "$NATIVE/onboarding-shortcut.png" '1460x1350>' "$TMP/capture-shortcut.png"
+    prepare_capture "$NATIVE/onboarding-shortcut.png" '1380x1280' "$TMP/capture-shortcut.png"
 
     magick "$TMP/pills-shortcut.png" "$TMP/capture-shortcut.png" \
         -gravity northwest -geometry +1270+205 -compose over -composite \
@@ -228,27 +240,10 @@ render_shortcut() {
     finish_png "$TMP/shortcut.png" "$OUT/04-your-shortcut.png"
 }
 
-render_paywall() {
-    add_brand "$TMP/master-base.png" "$TMP/brand.png"
-    add_copy "$TMP/brand.png" \
-        'TRY EVERY FEATURE' \
-        'Seven days.' 'Full access.' \
-        'Use the complete app during your trial. Keep it forever with one $4.99 purchase.' \
-        '#7a66ff' "$TMP/copy-paywall.png"
-    add_pills "$TMP/copy-paywall.png" 'Full trial' 'One purchase' 'Restore anytime' "$TMP/pills-paywall.png"
-    prepare_capture "$NATIVE/paywall.png" '1180x1350>' "$TMP/capture-paywall.png"
-
-    magick "$TMP/pills-paywall.png" "$TMP/capture-paywall.png" \
-        -gravity northwest -geometry +1510+182 -compose over -composite \
-        "$TMP/paywall.png"
-    finish_png "$TMP/paywall.png" "$OUT/05-seven-day-trial.png"
-}
-
 make_base "$TMP/master-base.png"
 render_ready
 render_drag
 render_menu
 render_shortcut
-render_paywall
 
-echo "Composed five native Retina App Store screenshots in $OUT"
+echo "Composed four native Retina App Store screenshots in $OUT"

@@ -2,9 +2,11 @@
 
 [Website](https://airfliq.vercel.app) | [Privacy](https://airfliq.vercel.app/privacy) | [Support](https://airfliq.vercel.app/support) | [GitHub](https://github.com/cosmintrica/AirFliq)
 
-AirFliq is a native macOS utility that prepares Finder selections for Apple's
-AirDrop panel from a shortcut, menu bar icon, Finder context menu, or animated
-drag target.
+AirFliq is a native macOS utility that opens Apple's AirDrop panel from a
+shortcut, menu bar icon, Finder context menu, or animated drag target. The
+Mac App Store build opens a file picker for the shortcut and menu action;
+right-click and drag-and-drop send the selected items directly. Local direct
+distribution builds can also read Finder selection through Automation.
 
 ## Build locally
 
@@ -17,6 +19,27 @@ The build is a universal ARM64 and x86_64 app at `build/AirFliq.app`. Local
 ad-hoc signing is enough for interface testing, but macOS privacy grants may
 reset when the binary changes. Use a stable Apple Development signature for
 repeatable permission testing.
+
+For local transfer testing without StoreKit activation, build with an installed
+Apple Development signing identity:
+
+```bash
+APP_STORE_BUILD=1 LOCAL_TRANSFER_QA=1 BUILD_CONFIGURATION=Development \
+  BUILD_DIR="$PWD/build/local-transfer-test" \
+  SIGN_IDENTITY="Apple Development: YOUR IDENTITY" ./build.sh
+```
+
+This explicit DEBUG-only mode keeps the App Store filesystem sandbox, enables
+sending, and disables trial/purchase/restore operations without granting Pro or
+changing trial history. The menu/setup status identifies the local test. It is
+not an IAP test: test trial activation separately with a Sandbox Apple Account
+and a matching storefront. Release compilation and App Store packaging reject
+this mode. Install just one app at `/Applications/AirFliq.app` and archive/remove
+other runnable copies to avoid duplicate Finder extensions.
+
+Run `scripts/verify-local-transfer-qa.sh` for the normal purchase gate, and
+`QA_SWIFT_FLAGS='-D DEBUG -D AIRFLIQ_LOCAL_QA' scripts/verify-local-transfer-qa.sh`
+for the isolated local mode checks.
 
 Reset the three macOS onboarding permissions and the development-only local
 trial fallback with:

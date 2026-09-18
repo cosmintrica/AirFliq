@@ -162,15 +162,17 @@ The package validator checks all of the following before the artifact exists:
 - Both `AirFliq` and `AirFliqFinder` contain ARM64 and x86_64 slices.
 - The app, Finder extension and RevenueCat framework have valid nested
   signatures.
-- App Sandbox, folder bookmarks, read-only user-selected folders and Finder
-  Apple Events entitlements are present.
+- App Sandbox, folder bookmarks, read-only user-selected items and network client
+  entitlements are present. Apple Events, scripting targets, temporary exceptions
+  and the Automation usage description are absent.
 - `get-task-allow` is not enabled.
 - The app and extension bundle IDs, versions and build numbers match.
 - Both embedded profiles are current App Store profiles for the same team.
 - The signed installer contains the expected AirFliq executable.
 
-Apple must approve the temporary Finder Apple Events exception. Keep its App
-Review explanation synchronized with `marketing/app-store/metadata-en-US.md`.
+The App Store build uses NSOpenPanel for the global shortcut/menu action and
+Finder Sync for the right-click action. Keep the App Review explanation
+synchronized with `marketing/app-store/metadata-en-US.md`.
 Passing the local validator does not replace App Store Connect processing or
 App Review.
 

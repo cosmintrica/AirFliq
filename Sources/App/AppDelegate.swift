@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // without blocking launch and surface setup again if anything drifted.
             Task { [weak self] in
                 async let automation = Task.detached(priority: .utility) {
-                    Permissions.automationState()
+                    Permissions.selectionSetupState()
                 }.value
                 async let menu = Task.detached(priority: .utility) {
                     Permissions.finderExtensionState()
@@ -74,7 +74,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Finder extension.
     func application(_ application: NSApplication, open urls: [URL]) {
         lastOpenAt = Date()
-        AirDrop.send(urls)
+        var files: [URL] = []
+        for url in urls {
+            if url.isFileURL {
+                files.append(url)
+            } else if let selection = FinderSendRequest.decode(url) {
+                files.append(contentsOf: selection)
+            } else {
+                Toast.show("Could not read the Finder selection",
+                           subtitle: "Select the files in Finder and try Send with AirFliq again.")
+                return
+            }
+        }
+        AirDrop.send(files)
     }
 
     /// Clicking the toolbar icon without dragging: fall back to the selection.
@@ -82,7 +94,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if captureMode == nil,
            !hasVisibleWindows,
            Date().timeIntervalSince(lastOpenAt) > 0.5 {
-            AirDrop.sendFinderSelection()
+            AirDrop.chooseAndSend()
         }
         return false
     }
@@ -159,7 +171,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Actions
 
     @objc private func sendSelection() {
-        AirDrop.sendFinderSelection()
+        AirDrop.chooseAndSend()
     }
 
     @discardableResult

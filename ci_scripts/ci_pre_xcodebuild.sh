@@ -15,9 +15,9 @@ set -eu
 
 xcode_version="$(xcodebuild -version | sed -n '1p')"
 case "$xcode_version" in
-  "Xcode 26."*) ;;
+  "Xcode 26."*|"Xcode 27."*) ;;
   *)
-  echo "ci_pre_xcodebuild: expected a stable Xcode 26.x, found $xcode_version" >&2
+  echo "ci_pre_xcodebuild: expected a stable Xcode 26.x or 27.x, found $xcode_version" >&2
   exit 1
   ;;
 esac
@@ -57,4 +57,4 @@ plutil -lint \
   exit 1
 }
 
-echo "ci_pre_xcodebuild: stable Xcode 26.x App Store archive contract verified"
+echo "ci_pre_xcodebuild: stable Xcode App Store archive contract verified"

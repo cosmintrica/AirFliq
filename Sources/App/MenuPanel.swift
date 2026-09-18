@@ -273,9 +273,9 @@ private struct MenuExperienceView: View {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 13, weight: .bold))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Send Finder selection")
+                    Text(AirDrop.sendActionTitle)
                         .font(.system(size: 13, weight: .bold))
-                    Text("Open native AirDrop now")
+                    Text(AirDrop.sendActionDetail)
                         .font(.system(size: 10.5, weight: .medium))
                         .opacity(0.75)
                 }

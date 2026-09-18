@@ -48,7 +48,7 @@ if /usr/bin/grep -Fq 'The 7-day full trial begins locally on first launch.' "$ME
     exit 1
 fi
 
-APP_BINARY="$ROOT/build/AirFliq.app/Contents/MacOS/AirFliq"
+APP_BINARY="${1:-$ROOT/build/AirFliq.app/Contents/MacOS/AirFliq}"
 if [ -f "$APP_BINARY" ]; then
     for source in "$MONETIZATION" "$PERSISTENCE" "$PAYWALL"; do
         if [ "$source" -nt "$APP_BINARY" ]; then

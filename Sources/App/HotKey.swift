@@ -222,7 +222,7 @@ final class ShortcutManager {
         // never leave the user without their previous working gesture.
         guard let candidate = HotKey(keyCode: shortcut.keyCode,
                                      modifiers: shortcut.modifiers,
-                                     action: { AirDrop.sendFinderSelection() }) else {
+                                     action: { AirDrop.chooseAndSend() }) else {
             if announcesResult {
                 Toast.show("That shortcut is already in use",
                            subtitle: "Your previous AirFliq shortcut is still active.",

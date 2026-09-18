@@ -273,7 +273,7 @@ private struct AirFliqPaywallView: View {
                 Text("7-day full trial")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
 
-                Text("After day 7, Finder selection, shortcuts, right-click, menu bar and drag-to-send stop sending until Lifetime Pro is unlocked.")
+                Text("After day 7, file sharing, shortcuts, right-click, menu bar and drag-to-send stop sending until Lifetime Pro is unlocked.")
                     .font(.system(size: 10.5, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineSpacing(1.5)

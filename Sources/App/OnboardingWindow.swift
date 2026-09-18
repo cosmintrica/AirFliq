@@ -90,14 +90,28 @@ final class OnboardingExperienceModel: ObservableObject {
         let accent: Color
     }
 
-    let steps = [
+    private static var selectionStep: Step {
+#if MAC_APP_STORE
+        Step(id: 0,
+             eyebrow: "FILE SELECTION",
+             title: "Choose. AirFliq follows.",
+             detail: "Your shortcut opens a file picker. For a Finder selection, use right-click or drag-and-drop.",
+             action: "Continue",
+             symbol: "cursorarrow.rays",
+             accent: Color(red: 0.16, green: 0.72, blue: 1.0))
+#else
         Step(id: 0,
              eyebrow: "FINDER SELECTION",
              title: "Point. AirFliq sees it.",
              detail: "Allow read-only access to the files currently selected in Finder.",
              action: "Allow Finder Access",
              symbol: "cursorarrow.rays",
-             accent: Color(red: 0.16, green: 0.72, blue: 1.0)),
+             accent: Color(red: 0.16, green: 0.72, blue: 1.0))
+#endif
+    }
+
+    let steps = [
+        OnboardingExperienceModel.selectionStep,
         Step(id: 1,
              eyebrow: "YOUR FOLDERS",
              title: "You choose the boundaries.",
@@ -133,6 +147,7 @@ final class OnboardingExperienceModel: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     private var advanceTask: Task<Void, Never>?
     private var helpWatchTask: Task<Void, Never>?
+    private var settingsCloseObserver: NSObjectProtocol?
     private var isRefreshing = false
     private var hasLoadedInitialState = false
     private var forceShortcutStage = false
@@ -178,6 +193,7 @@ final class OnboardingExperienceModel: ObservableObject {
         advanceTask = nil
         helpWatchTask?.cancel()
         helpWatchTask = nil
+        stopWatchingSettingsClose()
     }
 
     func selectStep(_ index: Int) {
@@ -274,14 +290,20 @@ final class OnboardingExperienceModel: ObservableObject {
         guard let helpMode else { return }
         switch helpMode {
         case .finderAccess:
+#if MAC_APP_STORE
+            closeHelp()
+            advanceToNextStep()
+#else
             Permissions.openAutomationSettings()
             startWatchingFromInlineHelp(for: .finderAccess)
+#endif
         case .folderAccess:
             closeHelp()
             DispatchQueue.main.async { [weak self] in
                 self?.requestFolderAccess()
             }
         case .enableExtension:
+            watchSettingsClose()
             Permissions.openExtensionSettings()
             startWatchingFromInlineHelp(for: .enableExtension)
         case .menuMissing:
@@ -312,7 +334,7 @@ final class OnboardingExperienceModel: ObservableObject {
 
         Task { [weak self] in
             async let automation = Task.detached(priority: .utility) {
-                Permissions.automationState()
+                Permissions.selectionSetupState()
             }.value
             async let menu = Task.detached(priority: .utility) {
                 Permissions.finderExtensionState()
@@ -324,10 +346,14 @@ final class OnboardingExperienceModel: ObservableObject {
         }
     }
 
-    private func apply(_ liveStates: [PermissionState], celebrate requestedStep: Int? = nil) {
+    func apply(_ liveStates: [PermissionState], celebrate requestedStep: Int? = nil) {
         var displayed = liveStates
+#if !MAC_APP_STORE
         if !Permissions.hasRequestedAutomation { displayed[0] = .unknown }
-        if !Permissions.hasRequestedFinderExtension { displayed[2] = .unknown }
+#endif
+        if !Permissions.hasRequestedFinderExtension && displayed[2] != .granted {
+            displayed[2] = .unknown
+        }
 
         if !hasLoadedInitialState {
             states = displayed
@@ -363,33 +389,46 @@ final class OnboardingExperienceModel: ObservableObject {
         Permissions.hasRunSetup = displayed.allSatisfy { $0 == .granted }
         if !displayed.allSatisfy({ $0 == .granted }) { showReadyStage = false }
 
-        guard completed != nil else { return }
+        let resolvedStep = completed ?? requestedStep
+        if (resolvedStep == 0 && displayed[0] == .granted && helpMode == .finderAccess)
+            || (resolvedStep == 2 && displayed[2] == .granted && helpMode == .enableExtension) {
+            closeHelp()
+        }
+
+        guard completed != nil else {
+            // Confirming an already-authorized folder is still a completed
+            // action. A background refresh is not: it must preserve navigation.
+            if let requestedStep, displayed[requestedStep] == .granted,
+               celebratingIndex == nil {
+                advanceToNextStep()
+            }
+            return
+        }
 
         advanceTask?.cancel()
         advanceTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 2_050_000_000)
             guard let self, !Task.isCancelled else { return }
-            if isComplete {
-                withAnimation(.spring(response: 0.82, dampingFraction: 0.84)) {
-                    celebratingIndex = nil
-                    if Shortcut.hasConfigured {
-                        showReadyStage = true
-                    } else {
-                        showShortcutStage = true
-                    }
-                }
-            } else if let next = states.indices.first(where: { states[$0] != .granted }) {
-                withAnimation(.spring(response: 0.72, dampingFraction: 0.86)) {
-                    celebratingIndex = nil
-                    activeIndex = next
-                }
-            } else {
-                celebratingIndex = nil
+            advanceToNextStep()
+        }
+    }
+
+    private func advanceToNextStep() {
+        withAnimation(.spring(response: isComplete ? 0.82 : 0.72,
+                              dampingFraction: isComplete ? 0.84 : 0.86)) {
+            celebratingIndex = nil
+            showShortcutStage = isComplete && !shortcutConfigured
+            showReadyStage = isComplete && shortcutConfigured
+            if let next = states.firstIndex(where: { $0 != .granted }) {
+                activeIndex = next
             }
         }
     }
 
     private func requestFinderAccess() {
+#if MAC_APP_STORE
+        helpMode = .finderAccess
+#else
         if states[0] == .granted {
             Permissions.openAutomationSettings()
             return
@@ -403,6 +442,7 @@ final class OnboardingExperienceModel: ObservableObject {
                   celebrate: state == .granted ? 0 : nil)
             if state != .granted { Permissions.openAutomationSettings() }
         }
+#endif
     }
 
     private func requestFolderAccess() {
@@ -410,14 +450,14 @@ final class OnboardingExperienceModel: ObservableObject {
         // parent floating and repeatedly re-keying it fights the sheet closing
         // animation and causes the visible pause reported after Choose.
         isWorking = true
-        Permissions.requestFiles(attachedTo: window) { [weak self] state in
+        Permissions.requestFiles(attachedTo: window) { [weak self] state, confirmed in
             guard let self else { return }
             // The development permission probe invokes PluginKit. Running it
             // synchronously in NSOpenPanel's completion handler blocks AppKit's
             // dismissal animation and makes the chooser look frozen.
             Task { [weak self] in
                 async let automation = Task.detached(priority: .utility) {
-                    Permissions.automationState()
+                    Permissions.selectionSetupState()
                 }.value
                 async let menu = Task.detached(priority: .utility) {
                     Permissions.finderExtensionState()
@@ -425,7 +465,7 @@ final class OnboardingExperienceModel: ObservableObject {
                 let values = await [automation, state, menu]
                 guard let self else { return }
                 isWorking = false
-                apply(values, celebrate: state == .granted ? 1 : nil)
+                apply(values, celebrate: confirmed && state == .granted ? 1 : nil)
                 guard window?.isVisible == true else { return }
                 window?.makeKeyAndOrderFront(nil)
             }
@@ -433,6 +473,13 @@ final class OnboardingExperienceModel: ObservableObject {
     }
 
     private func requestFinderMenu() {
+#if MAC_APP_STORE
+        Permissions.hasRequestedFinderExtension = true
+        helpMode = .enableExtension
+        watchSettingsClose()
+        Permissions.openExtensionSettings()
+        startWatchingFromInlineHelp(for: .enableExtension)
+#else
         if states[2] == .granted {
             Permissions.openExtensionSettings()
             return
@@ -446,7 +493,7 @@ final class OnboardingExperienceModel: ObservableObject {
             guard let self else { return }
             restoreAfterSystemPresentation()
             isWorking = false
-            apply([Permissions.automationState(), Permissions.filesState(), state],
+            apply([Permissions.selectionSetupState(), Permissions.filesState(), state],
                   celebrate: state == .granted ? 2 : nil)
             if state != .granted {
                 withAnimation(.spring(response: 0.58, dampingFraction: 0.82)) {
@@ -454,6 +501,7 @@ final class OnboardingExperienceModel: ObservableObject {
                 }
             }
         }
+#endif
     }
 
     private func startWatchingFromInlineHelp(for mode: HelpMode) {
@@ -463,7 +511,7 @@ final class OnboardingExperienceModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: 1_200_000_000)
                 guard let self, !Task.isCancelled else { return }
                 async let automation = Task.detached(priority: .utility) {
-                    Permissions.automationState()
+                    Permissions.selectionSetupState()
                 }.value
                 async let extensionState = Task.detached(priority: .utility) {
                     Permissions.finderExtensionState()
@@ -473,7 +521,7 @@ final class OnboardingExperienceModel: ObservableObject {
                     ? values[0] == .granted
                     : values[2] == .granted
                 guard resolved else { continue }
-                apply(values)
+                apply(values, celebrate: mode == .finderAccess ? 0 : 2)
                 try? await Task.sleep(nanoseconds: 780_000_000)
                 guard !Task.isCancelled else { return }
                 closeHelp()
@@ -491,6 +539,32 @@ final class OnboardingExperienceModel: ObservableObject {
         isWorking = true
         window?.level = .floating
         bringToFront()
+    }
+
+    private func watchSettingsClose() {
+        guard settingsCloseObserver == nil else { return }
+        settingsCloseObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
+                as? NSRunningApplication,
+                app.bundleIdentifier == "com.apple.systempreferences" else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                stopWatchingSettingsClose()
+                guard window?.isVisible == true else { return }
+                bringToFront()
+                refresh()
+            }
+        }
+    }
+
+    private func stopWatchingSettingsClose() {
+        if let settingsCloseObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(settingsCloseObserver)
+            self.settingsCloseObserver = nil
+        }
     }
 
     private func restoreAfterSystemPresentation() {
@@ -626,7 +700,8 @@ private struct OnboardingExperience: View {
             Text("\(model.completedStepCount) / 4 READY")
                 .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                 .tracking(0.7)
-                .foregroundStyle(model.isComplete ? Color.airFliqGreen : .secondary)
+                .foregroundStyle(model.isComplete && model.shortcutConfigured
+                                 ? Color.airFliqGreen : .secondary)
 
             Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
                 .font(.system(size: 10.5, weight: .medium, design: .monospaced))
@@ -641,9 +716,7 @@ private struct OnboardingExperience: View {
 
             Spacer(minLength: 8)
 
-            Text(monetization.package == nil
-                 ? "7-day trial available  •  Lifetime Pro"
-                 : "7-day trial available  •  Lifetime Pro \(monetization.price)")
+            Text(monetization.setupSummary)
                 .font(.system(size: 10.5, weight: .medium))
                 .foregroundStyle(.tertiary)
 
@@ -766,7 +839,12 @@ private struct InlineTroubleshoot: View {
 
     private var title: String {
         switch mode {
-        case .finderAccess: return "Reconnect Finder access"
+        case .finderAccess:
+#if MAC_APP_STORE
+            return "Choose files with your shortcut"
+#else
+            return "Reconnect Finder access"
+#endif
         case .folderAccess: return "Choose your folder boundary"
         case .enableExtension: return "Connect the Finder menu"
         case .menuMissing: return "Finder needs one refresh"
@@ -776,11 +854,19 @@ private struct InlineTroubleshoot: View {
     private var steps: [String] {
         switch mode {
         case .finderAccess:
+#if MAC_APP_STORE
+            return [
+                "Press your shortcut to open the file picker.",
+                "Choose files or folders, then confirm to open AirDrop.",
+                "For Finder selections, use right-click or drag-and-drop.",
+            ]
+#else
             return [
                 "Open Automation in System Settings.",
                 "Allow AirFliq to control Finder.",
                 "Return here. AirFliq verifies the change automatically.",
             ]
+#endif
         case .folderAccess:
             return [
                 "Open the macOS folder picker.",
@@ -788,6 +874,13 @@ private struct InlineTroubleshoot: View {
                 "Change this list whenever you want.",
             ]
         case .enableExtension:
+            if #available(macOS 15.0, *) {
+                return [
+                    "Open General → Login Items & Extensions.",
+                    "Under Extensions, select AirFliq and switch it on.",
+                    "Return here. AirFliq detects it automatically.",
+                ]
+            }
             return [
                 "Open Finder Extensions in System Settings.",
                 "Switch on AirFliq.",
@@ -804,7 +897,12 @@ private struct InlineTroubleshoot: View {
 
     private var actionTitle: String {
         switch mode {
-        case .finderAccess: return "Open Automation Settings"
+        case .finderAccess:
+#if MAC_APP_STORE
+            return "Got it"
+#else
+            return "Open Automation Settings"
+#endif
         case .folderAccess: return "Choose Folders"
         case .enableExtension: return "Open Finder Extensions"
         case .menuMissing:
@@ -855,7 +953,7 @@ private struct FlightRoute: View {
                                                    dash: [3, 7]))
 
                     segment
-                        .trim(from: 0, to: routeIsGranted(index) ? 1 : 0)
+                        .trim(from: 0, to: segmentIsComplete(index) ? 1 : 0)
                         .stroke(
                             LinearGradient(colors: index == 0
                                            ? [.airFliqCyan, .airFliqBlue]
@@ -867,7 +965,7 @@ private struct FlightRoute: View {
                         )
                         .shadow(color: .airFliqBlue.opacity(0.65), radius: 7)
                         .animation(.spring(response: 0.95, dampingFraction: 0.9),
-                                   value: states[index])
+                                   value: segmentIsComplete(index))
                 }
 
                 ForEach(0..<4, id: \.self) { index in
@@ -909,7 +1007,11 @@ private struct FlightRoute: View {
     }
 
     private func routeTitle(_ index: Int) -> String {
+#if MAC_APP_STORE
+        ["Files", "Folders", "Right-click", "Shortcut"][index]
+#else
         ["Finder", "Folders", "Right-click", "Shortcut"][index]
+#endif
     }
 
     private func routeState(_ index: Int) -> PermissionState {
@@ -920,6 +1022,10 @@ private struct FlightRoute: View {
     private func routeIsGranted(_ index: Int) -> Bool {
         if index < states.count { return states[index] == .granted }
         return shortcutConfigured
+    }
+
+    private func segmentIsComplete(_ index: Int) -> Bool {
+        routeIsGranted(index) && routeIsGranted(index + 1)
     }
 }
 
@@ -1017,6 +1123,9 @@ private struct PermissionStage: View {
 
     private var buttonTitle: String {
         if model.isWorking { return "Waiting for macOS" }
+#if MAC_APP_STORE
+        if step.id == 0 { return "How it works" }
+#endif
         if state == .granted {
             return step.id == 1 ? "Manage Folders" : "Review Access"
         }
@@ -1404,7 +1513,7 @@ private struct ReadyStage: View {
                     .tracking(-0.4)
                     .padding(.top, 10)
 
-                Text("Select a file. Use your shortcut, right-click, or simply drag. The native AirDrop panel appears instantly.")
+                Text(AirDrop.readyInstructions)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineSpacing(3)

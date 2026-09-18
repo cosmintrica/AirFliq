@@ -14,7 +14,11 @@ set -euo pipefail
 #   BUILD_NUMBER        Numeric App Store build, defaults to App-Info.plist
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-BUILD="$ROOT/build"
+if [ "${LOCAL_TRANSFER_QA:-0}" = "1" ]; then
+    echo "error: local transfer QA builds cannot be packaged for the App Store." >&2
+    exit 1
+fi
+BUILD="${BUILD_DIR:-$ROOT/build}"
 APP="$BUILD/AirFliq.app"
 PKG="$BUILD/AirFliq-AppStore.pkg"
 
@@ -116,7 +120,7 @@ REVENUECAT_API_KEY="$REVENUECAT_API_KEY" \
 "$ROOT/build.sh"
 
 echo "▸ Verifying trial policy"
-/bin/bash "$ROOT/scripts/verify-trial-policy.sh"
+/bin/bash "$ROOT/scripts/verify-trial-policy.sh" "$APP/Contents/MacOS/AirFliq"
 
 echo "▸ Verifying sandbox, privacy manifest and universal binaries"
 /usr/bin/test -f "$APP/Contents/Resources/PrivacyInfo.xcprivacy"

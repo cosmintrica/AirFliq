@@ -15,8 +15,10 @@ enum Permissions {
     nonisolated static let extensionIdentifier = "com.cosmintrica.airfliq.finder"
 
     private static let hasRunSetupKey = "hasRunSetup"
+    #if !MAC_APP_STORE
     private static let hasRequestedAutomationKey =
         "airfliq.onboarding.didRequestFinderAutomation.v1"
+    #endif
     private static let hasRequestedFinderExtensionKey =
         "airfliq.onboarding.didRequestFinderExtension.v1"
     private static let folderBookmarksKey = "selectedFolderBookmarks"
@@ -41,6 +43,7 @@ enum Permissions {
         set { UserDefaults.standard.set(newValue, forKey: hasRequestedFinderExtensionKey) }
     }
 
+    #if !MAC_APP_STORE
     static var hasRequestedAutomation: Bool {
         get { UserDefaults.standard.bool(forKey: hasRequestedAutomationKey) }
         set { UserDefaults.standard.set(newValue, forKey: hasRequestedAutomationKey) }
@@ -74,6 +77,20 @@ enum Permissions {
             }.value
             completion(state)
         }
+    }
+
+    #endif
+
+    /// The original setup has one selection step. In the store build it is
+    /// an explanation of explicit file selection, not an Automation grant.
+    nonisolated static func selectionSetupState() -> PermissionState {
+#if MAC_APP_STORE
+        // The system picker is usable immediately; reading an explanation is
+        // not a prerequisite or a permission grant.
+        .granted
+#else
+        automationState()
+#endif
     }
 
     // MARK: - User-selected folders
@@ -112,7 +129,7 @@ enum Permissions {
     }
 
     static func requestFiles(attachedTo parentWindow: NSWindow?,
-                             completion: @escaping (PermissionState) -> Void) {
+                             completion: @escaping (PermissionState, Bool) -> Void) {
         if selectedFolderCount > 0 {
             presentFolderManagement(attachedTo: parentWindow, completion: completion)
         } else {
@@ -120,46 +137,80 @@ enum Permissions {
         }
     }
 
-    /// When a send reaches a folder outside the user's current choices, explain
-    /// the exact missing scope and let the user choose it. Nothing is granted
-    /// automatically and existing folder choices are preserved.
-    static func requestAccess(to urls: [URL], attachedTo parentWindow: NSWindow?,
-                              completion: @escaping (Bool) -> Void) {
-        let folders = Array(Set(urls.map {
-            var isDirectory: ObjCBool = false
-            FileManager.default.fileExists(atPath: $0.path, isDirectory: &isDirectory)
-            return (isDirectory.boolValue ? $0 : $0.deletingLastPathComponent()).standardizedFileURL
-        })).sorted { $0.path < $1.path }
-        guard let first = folders.first else { completion(false); return }
+    private static var accessRequests: [FolderAccessRequest] = []
+    private static var accessPanel: NSOpenPanel?
+    private static var accessRequestIsRunning = false
 
-        let alert = NSAlert()
-        alert.messageText = folders.count == 1
-            ? "Allow access to \(folderDisplayName(first))?"
-            : "Allow access to these folders?"
-        alert.informativeText = folders.count == 1
-            ? "AirFliq cannot read the selected item yet. Choose \(folderDisplayName(first)), or a parent folder, to continue this send."
-            : "AirFliq cannot read some selected items yet. Choose their folders, or a shared parent folder, to continue this send."
-        alert.addButton(withTitle: folders.count == 1 ? "Choose Folder" : "Choose Folders")
-        alert.addButton(withTitle: "Cancel")
-        present(alert, attachedTo: parentWindow) { response in
-            guard response == .alertFirstButtonReturn else { completion(false); return }
-            let panel = NSOpenPanel()
-            panel.title = "Choose access for AirFliq"
-            panel.message = "Only the folders you choose will be saved."
-            panel.prompt = "Allow Access"
-            panel.canChooseDirectories = true
-            panel.canChooseFiles = false
-            panel.allowsMultipleSelection = folders.count > 1
-            panel.canCreateDirectories = false
-            panel.resolvesAliases = true
-            panel.directoryURL = first.deletingLastPathComponent()
-            let handler: (NSApplication.ModalResponse) -> Void = { result in
-                guard result == .OK else { completion(false); return }
-                saveFolderAccess(panel.urls, replacing: false)
-                completion(urls.allSatisfy { FileManager.default.isReadableFile(atPath: $0.path) })
-            }
-            present(panel, attachedTo: parentWindow, completion: handler)
+    /// Reactivate persisted grants before testing a file, including sends that
+    /// arrive before onboarding has ever been opened in this process.
+    static func restoreFolderAccess() {
+        activateFolderAccess(resolveFolderBookmarks().urls)
+    }
+
+    static func authorizedFolders(for urls: [URL]) -> [URL] {
+        resolveFolderBookmarks().urls.filter { folder in
+            urls.contains { FolderAccessRequest.contains(folder, item: $0) }
         }
+    }
+
+    static func requestAccess(to urls: [URL], attachedTo parentWindow: NSWindow?,
+                              forceAuthorization: Bool = false,
+                              completion: @escaping (Bool) -> Void) {
+        restoreFolderAccess()
+        let request = FolderAccessRequest(
+            urls: urls, forceAuthorization: forceAuthorization,
+            isReadable: { FileManager.default.isReadableFile(atPath: $0.path) },
+            fileExists: { FileManager.default.fileExists(atPath: $0.path) },
+            reportUnavailable: { url in
+                Toast.show("That item is no longer available",
+                           subtitle: "\(url.lastPathComponent) may have been moved or deleted.")
+            },
+            chooseFolder: { folder, _, retry, selected in
+                let panel = NSOpenPanel()
+                accessPanel = panel
+                panel.title = "Allow AirFliq to send these files"
+                let name = folderDisplayName(folder)
+                panel.message = retry
+                    ? "Access is still missing. Choose \(name), or a folder containing it, to continue your transfer."
+                    : "Allow access to \(name) to continue this transfer. AirFliq will remember the folder and resume automatically."
+                panel.prompt = "Allow & Continue"
+                panel.canChooseDirectories = true
+                panel.canChooseFiles = false
+                panel.allowsMultipleSelection = false
+                panel.canCreateDirectories = false
+                panel.resolvesAliases = true
+                panel.directoryURL = folder
+                NSApp.activate(ignoringOtherApps: true)
+                // A standalone asynchronous panel avoids stacking a new sheet
+                // onto an alert or share sheet that has not finished closing.
+                panel.begin { response in
+                    accessPanel = nil
+                    let url = response == .OK ? panel.url : nil
+                    DispatchQueue.main.async { selected(url) }
+                }
+            },
+            rememberFolder: { folder in
+                if !saveFolderAccess([folder], replacing: false) {
+                    Toast.show("Folder access could not be saved",
+                               subtitle: "This transfer can continue. You may need to allow the folder again next time.")
+                }
+            },
+            completion: { granted in
+                accessRequests.removeFirst()
+                accessRequestIsRunning = false
+                completion(granted)
+                // Schedule after completion so another request enqueued by a
+                // resumed send is processed in the same single-file queue.
+                DispatchQueue.main.async { startNextAccessRequest() }
+            })
+        accessRequests.append(request)
+        DispatchQueue.main.async { startNextAccessRequest() }
+    }
+
+    private static func startNextAccessRequest() {
+        guard !accessRequestIsRunning, let request = accessRequests.first else { return }
+        accessRequestIsRunning = true
+        request.start()
     }
 
     static func showFilesAccessHelp(attachedTo parentWindow: NSWindow?) {
@@ -175,7 +226,7 @@ enum Permissions {
 
         present(alert, attachedTo: parentWindow) { response in
             if response == .alertFirstButtonReturn {
-                presentFolderPicker(attachedTo: parentWindow) { _ in }
+                presentFolderPicker(attachedTo: parentWindow) { _, _ in }
             } else if response == .alertSecondButtonReturn {
                 openFilesSettings()
             }
@@ -184,7 +235,7 @@ enum Permissions {
 
     private static func presentFolderManagement(
         attachedTo parentWindow: NSWindow?,
-        completion: @escaping (PermissionState) -> Void
+        completion: @escaping (PermissionState, Bool) -> Void
     ) {
         let alert = NSAlert()
         alert.messageText = "Manage folder access"
@@ -206,27 +257,27 @@ enum Permissions {
                 }
             case .alertSecondButtonReturn:
                 clearFolderAccess()
-                completion(.unknown)
+                completion(.unknown, false)
             default:
-                completion(filesState())
+                completion(filesState(), false)
             }
         }
     }
 
     private static func presentFolderPicker(
         attachedTo parentWindow: NSWindow?,
-        completion: @escaping (PermissionState) -> Void
+        completion: @escaping (PermissionState, Bool) -> Void
     ) {
         let panel = warmedFolderPanel ?? makeFolderPanel()
         warmedFolderPanel = panel
 
         let handler: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK else {
-                completion(filesState())
+                completion(filesState(), false)
                 return
             }
             saveFolderAccess(panel.urls, replacing: true)
-            completion(filesState())
+            completion(filesState(), true)
         }
 
         NSApp.activate(ignoringOtherApps: true)
@@ -260,18 +311,38 @@ enum Permissions {
         return panel
     }
 
-    private static func saveFolderAccess(_ urls: [URL], replacing: Bool) {
-        var selected = replacing ? [] : resolveFolderBookmarks().urls
-        selected.append(contentsOf: urls)
-        let unique = Dictionary(selected.map { ($0.standardizedFileURL.path, $0.standardizedFileURL) }, uniquingKeysWith: { first, _ in first }).map(\.value)
-        let bookmarks = unique.compactMap {
-            try? $0.bookmarkData(options: .withSecurityScope,
-                                 includingResourceValuesForKeys: nil,
-                                 relativeTo: nil)
+    @discardableResult
+    private static func saveFolderAccess(_ urls: [URL], replacing: Bool) -> Bool {
+        var bookmarks = replacing ? [] : (UserDefaults.standard.array(forKey: folderBookmarksKey) as? [Data] ?? [])
+        var savedAll = true
+        for url in urls {
+            do {
+                let bookmark = try url.bookmarkData(
+                    options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                    includingResourceValuesForKeys: nil, relativeTo: nil)
+                // Keep existing grants, even temporarily unresolvable ones.
+                bookmarks.removeAll { data in
+                    var stale = false
+                    let saved = try? URL(resolvingBookmarkData: data,
+                                         options: [.withSecurityScope, .withoutUI],
+                                         relativeTo: nil, bookmarkDataIsStale: &stale)
+                    return saved?.standardizedFileURL == url.standardizedFileURL
+                }
+                bookmarks.append(bookmark)
+            } catch {
+                savedAll = false
+            }
         }
-        clearActiveFolderAccess()
         UserDefaults.standard.set(bookmarks, forKey: folderBookmarksKey)
-        activateFolderAccess(unique)
+        let resolved = resolveFolderBookmarks().urls
+        // Preserve the live panel grant even if persistence fails, so the
+        // current transfer still has access. Reconcile without closing grants
+        // that another in-flight transfer is currently using.
+        let accessible = Dictionary((resolved + urls).map {
+            ($0.standardizedFileURL.path, $0)
+        }, uniquingKeysWith: { first, _ in first }).map(\.value)
+        activateFolderAccess(accessible)
+        return savedAll
     }
 
     private static func clearFolderAccess() {
@@ -299,7 +370,7 @@ enum Permissions {
 
             resolved.append(url)
             if stale,
-               let replacement = try? url.bookmarkData(options: .withSecurityScope,
+               let replacement = try? url.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
                                                        includingResourceValuesForKeys: nil,
                                                        relativeTo: nil) {
                 refreshed.append(replacement)
@@ -414,13 +485,21 @@ enum Permissions {
     }
 
     static func openExtensionSettings() {
+        if #available(macOS 15.0, *),
+           let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"),
+           NSWorkspace.shared.open(url) {
+            return
+        }
         FIFinderSyncController.showExtensionManagementInterface()
     }
 
+    #if !MAC_APP_STORE
     static func openAutomationSettings() {
         let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!
         NSWorkspace.shared.open(url)
     }
+
+    #endif
 
     static func openFilesSettings() {
         let url = URL(string:

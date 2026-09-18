@@ -2,6 +2,10 @@ import AppKit
 import Combine
 import RevenueCat
 
+#if AIRFLIQ_LOCAL_QA && !DEBUG
+#error("AIRFLIQ_LOCAL_QA is forbidden in Release builds")
+#endif
+
 extension Notification.Name {
     static let airFliqAccessChanged = Notification.Name("airfliq.access.changed")
     static let airFliqSendSucceeded = Notification.Name("airfliq.send.succeeded")
@@ -14,6 +18,19 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     static let entitlementID = "Pro"
     static let lifetimeProductID = "com.cosmintrica.airfliq.lifetime"
     static let trialProductID = "com.cosmintrica.airfliq.trial7day"
+
+#if AIRFLIQ_LOCAL_QA && DEBUG
+    static let isLocalTransferTest = true
+#else
+    static let isLocalTransferTest = false
+#endif
+    static var localTransferTestMessage: String {
+#if AIRFLIQ_LOCAL_QA && DEBUG
+        "Local transfer test (purchases disabled)"
+#else
+        ""
+#endif
+    }
 
     enum StoreState: Equatable {
         case notConfigured
@@ -80,6 +97,7 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
         isTrialStarted && !isTrialExpired
     }
     var trialStatusText: String {
+        if Self.isLocalTransferTest { return Self.localTransferTestMessage }
         guard isTrialStarted else { return "7-day trial ready to start" }
         if isTrialExpired { return "Trial ended" }
         if trialRemainingTime < 24 * 60 * 60 {
@@ -90,7 +108,14 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
         return trialDaysRemaining == 1 ? "1 day left in your trial"
                                        : "\(trialDaysRemaining) days left in your trial"
     }
-    var canSend: Bool { isPro || isTrialActive }
+    var canSend: Bool { Self.isLocalTransferTest || isPro || isTrialActive }
+
+    var setupSummary: String {
+        if Self.isLocalTransferTest { return Self.localTransferTestMessage }
+        return package == nil
+            ? "7-day trial available  •  Lifetime Pro"
+            : "7-day trial available  •  Lifetime Pro \(price)"
+    }
 
     /// Never invent a storefront price. RevenueCat supplies the localized
     /// amount once StoreKit has loaded the product for the current account.
@@ -98,6 +123,12 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     var localizedLifetimePrice: String? { package?.localizedPriceString }
 
     func configure() {
+        if Self.isLocalTransferTest {
+            storeState = .failed(Self.localTransferTestMessage)
+            trialStoreState = .failed(Self.localTransferTestMessage)
+            notifyChanged()
+            return
+        }
         refreshTrialClock()
         guard !isConfigured else {
             refresh()
@@ -147,6 +178,9 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     }
 
     func startTrial(completion: @escaping (PurchaseOutcome) -> Void) {
+        guard !Self.isLocalTransferTest else {
+            completion(.failed(Self.localTransferTestMessage)); return
+        }
         guard !isPro, !isTrialStarted else {
             completion(isTrialActive ? .trialStarted : .trialExpired)
             return
@@ -185,6 +219,9 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     }
 
     func purchase(completion: @escaping (PurchaseOutcome) -> Void) {
+        guard !Self.isLocalTransferTest else {
+            completion(.failed(Self.localTransferTestMessage)); return
+        }
         guard isConfigured else {
             completion(.failed("Purchases are available in the Mac App Store build."))
             return
@@ -219,6 +256,9 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     }
 
     func restore(completion: @escaping (PurchaseOutcome) -> Void) {
+        guard !Self.isLocalTransferTest else {
+            completion(.failed(Self.localTransferTestMessage)); return
+        }
         guard isConfigured else {
             completion(.failed("Purchases are available in the Mac App Store build."))
             return

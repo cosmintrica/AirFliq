@@ -173,6 +173,7 @@ private struct AirFliqPaywallView: View {
         .background(.ultraThinMaterial)
         .frame(width: 540, height: 630)
         .onAppear {
+            if !isBusy { statusMessage = nil; statusKind = .neutral }
             model.refresh()
             withAnimation(.spring(response: 0.88, dampingFraction: 0.82)) {
                 entered = true
@@ -371,7 +372,7 @@ private struct AirFliqPaywallView: View {
     }
     private var canPurchase: Bool {
         !model.isPro && !isBusy
-            && (isMarketingCapture || (model.isConfigured && model.package != nil))
+            && (isMarketingCapture || (model.isConfigured && model.lifetimeProduct != nil))
     }
     private var usageProgress: CGFloat {
         if model.isPro { return 1 }

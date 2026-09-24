@@ -47,6 +47,7 @@ if grep -Eq '^[[:space:]]*AIRFLIQ_REVENUECAT_API_KEY[[:space:]]*=' \
   exit 1
 fi
 "$repo_root/scripts/verify-trial-policy.sh"
+"$repo_root/scripts/verify-monetization-catalog.sh"
 plutil -lint \
   "$repo_root/Resources/App-Info.plist" \
   "$repo_root/Resources/Ext-Info.plist" \

@@ -53,6 +53,7 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     @Published private(set) var isPro = false
     @Published private(set) var package: Package?
     @Published private(set) var trialProduct: StoreProduct?
+    @Published private(set) var lifetimeProduct: StoreProduct?
     @Published private(set) var isConfigured = false
     @Published private(set) var storeState: StoreState = .notConfigured
     @Published private(set) var trialStoreState: StoreState = .notConfigured
@@ -61,7 +62,51 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     private var usesVerifiedTrialClock = false
     private var validatedTrialProduct: StoreProduct?
 
-    private override init() {
+    /// Injectable requests exercise the real catalog state machine without a
+    /// StoreKit account. They never configure purchases or grant an entitlement.
+    @MainActor struct CatalogRequests {
+        var products: @MainActor (@escaping @MainActor ([StoreProduct]) -> Void) -> Void
+        var offering: @MainActor (@escaping @MainActor (Package?) -> Void) -> Void
+        var schedule: @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void
+
+        static var live: CatalogRequests {
+            let trialID = Monetization.trialProductID
+            let lifetimeID = Monetization.lifetimeProductID
+            return CatalogRequests(
+                products: { completion in
+                    Purchases.shared.getProducts([trialID, lifetimeID]) { products in
+                        Task { @MainActor in completion(products) }
+                    }
+                },
+                offering: { completion in
+                    Purchases.shared.getOfferings { offerings, _ in
+                        let package = offerings?.current?.availablePackages.first {
+                            $0.storeProduct.productIdentifier == lifetimeID
+                        }
+                        Task { @MainActor in completion(package) }
+                    }
+                },
+                schedule: { delay, action in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) { action() }
+                }
+            )
+        }
+    }
+
+    private let catalogRequests: CatalogRequests
+    private var catalogGeneration = 0
+    private var catalogInFlight = false
+    private var productsReturned = false
+    private var offeringReturned = false
+    private var catalogRetryIndex = 0
+    private static let catalogRetryDelays: [TimeInterval] = [1, 3, 8]
+
+    private override convenience init() {
+        self.init(catalogRequests: .live)
+    }
+
+    init(catalogRequests: CatalogRequests) {
+        self.catalogRequests = catalogRequests
 #if MAC_APP_STORE
         trialStartedAt = nil
         trialReferenceDate = Date()
@@ -112,15 +157,15 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
 
     var setupSummary: String {
         if Self.isLocalTransferTest { return Self.localTransferTestMessage }
-        return package == nil
+        return lifetimeProduct == nil
             ? "7-day trial available  •  Lifetime Pro"
             : "7-day trial available  •  Lifetime Pro \(price)"
     }
 
     /// Never invent a storefront price. RevenueCat supplies the localized
     /// amount once StoreKit has loaded the product for the current account.
-    var price: String { package?.localizedPriceString ?? "one purchase" }
-    var localizedLifetimePrice: String? { package?.localizedPriceString }
+    var price: String { lifetimeProduct?.localizedPriceString ?? "one purchase" }
+    var localizedLifetimePrice: String? { lifetimeProduct?.localizedPriceString }
 
     func configure() {
         if Self.isLocalTransferTest {
@@ -150,16 +195,14 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
         apply(purchases.cachedCustomerInfo)
         notifyChanged()
         refreshCustomerInfo()
-        refreshOfferings()
-        refreshTrialProduct()
+        refreshCatalog()
     }
 
     func refresh() {
         refreshTrialClock()
         guard isConfigured else { return }
         refreshCustomerInfo(fetchPolicy: .fetchCurrent)
-        if package == nil { refreshOfferings() }
-        if validatedTrialProduct == nil { refreshTrialProduct() }
+        if lifetimeProduct == nil || validatedTrialProduct == nil { refreshCatalog() }
     }
 
     func resolveSendAccess(completion: @escaping (Bool) -> Void) {
@@ -190,7 +233,7 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
             return
         }
         guard let trialProduct else {
-            refreshTrialProduct()
+            refreshCatalog()
             completion(.failed("The free 7-day Trial and localized Lifetime price are still loading. Please try again."))
             return
         }
@@ -226,13 +269,14 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
             completion(.failed("Purchases are available in the Mac App Store build."))
             return
         }
-        guard let package else {
-            refreshOfferings()
+        guard let lifetimeProduct else {
+            refreshCatalog()
             completion(.failed("The Lifetime product is still loading. Please try again."))
             return
         }
-        if let configurationError = Self.lifetimeConfigurationError(for: package) {
+        if let configurationError = Self.lifetimeConfigurationError(for: lifetimeProduct) {
             self.package = nil
+            self.lifetimeProduct = nil
             storeState = .failed(configurationError)
             updateTrialReadiness()
             notifyChanged()
@@ -240,7 +284,7 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
             return
         }
 
-        Purchases.shared.purchase(package: package) { [weak self] _, info, error, cancelled in
+        let completed: PurchaseCompletedBlock = { [weak self] _, info, error, cancelled in
             guard let self else { return }
             apply(info)
             if isPro {
@@ -252,6 +296,12 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
             } else {
                 completion(.failed("The purchase finished without unlocking AirFliq Pro. Try Restore Purchase."))
             }
+        }
+        if let package,
+           package.storeProduct == lifetimeProduct {
+            Purchases.shared.purchase(package: package, completion: completed)
+        } else {
+            Purchases.shared.purchase(product: lifetimeProduct, completion: completed)
         }
     }
 
@@ -341,80 +391,99 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
         }
     }
 
-    private func refreshOfferings() {
-        guard isConfigured else { return }
-        storeState = .loading
+    /// StoreKit products are the authority for availability and localized prices.
+    /// The optional RevenueCat offering supplies package attribution only; a
+    /// missing offering must not disable a valid App Store purchase or trial.
+    func refreshCatalog(resetRetryBudget: Bool = true) {
+        guard !catalogInFlight else { return }
+        if resetRetryBudget { catalogRetryIndex = 0 }
+        catalogGeneration += 1
+        let generation = catalogGeneration
+        catalogInFlight = true
+        productsReturned = false
+        offeringReturned = false
+        if lifetimeProduct == nil { storeState = .loading }
+        if trialProduct == nil { trialStoreState = .loading }
         notifyChanged()
 
-        Purchases.shared.getOfferings { [weak self] offerings, error in
-            guard let self else { return }
-
-            if let error {
-                package = nil
-                storeState = .failed(error.localizedDescription)
-                updateTrialReadiness()
-                notifyChanged()
-                return
+        catalogRequests.products { [weak self] products in
+            guard let self, catalogInFlight, catalogGeneration == generation else { return }
+            productsReturned = true
+            if let product = products.first(where: { $0.productIdentifier == Self.lifetimeProductID }) {
+                if let error = Self.lifetimeConfigurationError(for: product) {
+                    lifetimeProduct = nil
+                    package = nil
+                    storeState = .failed(error)
+                } else {
+                    lifetimeProduct = product
+                    storeState = .ready
+                }
+            } else if lifetimeProduct == nil {
+                storeState = .failed("The Lifetime product could not be loaded from the App Store. Reopen this window to try again.")
             }
-
-            guard let offering = offerings?.current else {
-                package = nil
-                storeState = .failed("No current RevenueCat offering is configured.")
-                updateTrialReadiness()
-                notifyChanged()
-                return
-            }
-
-            package = offering.availablePackages.first {
-                $0.storeProduct.productIdentifier == Self.lifetimeProductID
-            }
-
-            if let package,
-               let configurationError = Self.lifetimeConfigurationError(for: package) {
-                self.package = nil
-                storeState = .failed(configurationError)
-            } else if package != nil {
-                storeState = .ready
-            } else {
-                storeState = .failed("The current offering has no Lifetime package.")
+            if let product = products.first(where: { $0.productIdentifier == Self.trialProductID }) {
+                if let error = Self.trialConfigurationError(for: product) {
+                    validatedTrialProduct = nil
+                    trialProduct = nil
+                    trialStoreState = .failed(error)
+                } else {
+                    validatedTrialProduct = product
+                }
+            } else if validatedTrialProduct == nil {
+                trialStoreState = .failed("The free 7-day Trial could not be loaded from the App Store. Reopen this window to try again.")
             }
             updateTrialReadiness()
             notifyChanged()
+            finishCatalogRequest(generation: generation)
+        }
+        catalogRequests.offering { [weak self] offeredPackage in
+            guard let self, catalogInFlight, catalogGeneration == generation else { return }
+            offeringReturned = true
+            if let offeredPackage,
+               Self.lifetimeConfigurationError(for: offeredPackage.storeProduct) == nil {
+                package = offeredPackage
+                // A valid product obtained by RevenueCat's offering is also
+                // usable when the independent product request is transiently empty.
+                if lifetimeProduct == nil {
+                    lifetimeProduct = offeredPackage.storeProduct
+                    storeState = .ready
+                }
+            }
+            // An offering failure must never erase a valid direct product.
+            updateTrialReadiness()
+            notifyChanged()
+            finishCatalogRequest(generation: generation)
+        }
+        catalogRequests.schedule(20) { [weak self] in
+            guard let self, catalogInFlight, catalogGeneration == generation else { return }
+            if lifetimeProduct == nil {
+                storeState = .failed("The App Store is taking longer than expected. Reopen this window to try again.")
+            }
+            if validatedTrialProduct == nil {
+                trialStoreState = .failed("The free 7-day Trial is taking longer than expected to load.")
+            }
+            updateTrialReadiness()
+            notifyChanged()
+            finishCatalogRequest(generation: generation, timedOut: true)
         }
     }
 
-    private func refreshTrialProduct() {
-        guard isConfigured else { return }
-        trialStoreState = .loading
-        notifyChanged()
-
-        Purchases.shared.getProducts([Self.trialProductID]) { [weak self] products in
-            guard let self else { return }
-            guard let product = products.first(where: {
-                $0.productIdentifier == Self.trialProductID
-            }) else {
-                validatedTrialProduct = nil
-                trialProduct = nil
-                trialStoreState = .failed("The free 7-day Trial product is unavailable in this storefront.")
-                notifyChanged()
-                return
-            }
-
-            if let configurationError = Self.trialConfigurationError(for: product) {
-                validatedTrialProduct = nil
-                trialProduct = nil
-                trialStoreState = .failed(configurationError)
-            } else {
-                validatedTrialProduct = product
-                updateTrialReadiness()
-            }
-            notifyChanged()
+    private func finishCatalogRequest(generation: Int, timedOut: Bool = false) {
+        guard timedOut || (productsReturned && offeringReturned) else { return }
+        catalogInFlight = false
+        guard lifetimeProduct == nil || validatedTrialProduct == nil,
+              catalogRetryIndex < Self.catalogRetryDelays.count else { return }
+        let delay = Self.catalogRetryDelays[catalogRetryIndex]
+        catalogRetryIndex += 1
+        catalogRequests.schedule(delay) { [weak self] in
+            guard let self, catalogGeneration == generation, !catalogInFlight else { return }
+            refreshCatalog(resetRetryBudget: false)
         }
     }
 
     /// Apple requires the downstream full-unlock charge to be disclosed before
     /// a time-based trial starts. Publishing trialProduct only after the exact
-    /// Lifetime package and its localized price are ready keeps the Paywall's
+    /// Lifetime product and its localized price are ready keeps the Paywall's
     /// existing enablement rule compliant regardless of callback order.
     private func updateTrialReadiness() {
         guard let validatedTrialProduct else {
@@ -438,7 +507,8 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     /// A trial described as free must never open a paid or renewable StoreKit
     /// product because of a dashboard configuration mistake.
     private static func trialConfigurationError(for product: StoreProduct) -> String? {
-        guard product.productType == .nonConsumable else {
+        guard product.productIdentifier == trialProductID,
+              product.productType == .nonConsumable else {
             return "The 7-day Trial must be configured as a non-consumable App Store product."
         }
         guard product.price == Decimal.zero else {
@@ -447,11 +517,11 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
         return nil
     }
 
-    private static func lifetimeConfigurationError(for package: Package) -> String? {
-        let product = package.storeProduct
+    private static func lifetimeConfigurationError(for product: StoreProduct) -> String? {
         guard product.productIdentifier == lifetimeProductID,
               product.productType == .nonConsumable,
-              product.price > Decimal.zero else {
+              product.price > Decimal.zero,
+              !product.localizedPriceString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return "The Lifetime offering must contain the paid non-consumable AirFliq product."
         }
         return nil

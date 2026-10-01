@@ -17,9 +17,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
-  title: "AirFliq - Select. Fliq. Sent.",
+  title: "AirFliq | AirDrop in one move on Mac",
   description:
-    "The beautifully fast way to prepare files for AirDrop from Finder, a shortcut, the menu bar, or a drag gesture.",
+    "Right-click in Finder, drop on a magnetic target, press a shortcut or click the menu bar, and Apple's AirDrop opens. Built in public for RevenueCat Shipaton 2026.",
   icons: {
     icon: "/assets/airfliq-icon.png",
     shortcut: "/assets/airfliq-icon.png",
@@ -27,22 +27,22 @@ export const metadata: Metadata = {
   },
   openGraph: {
     url: "/",
-    title: "AirFliq - Select. Fliq. Sent.",
-    description: "Try every AirFliq feature free for 7 days. Lifetime Pro is $4.99.",
+    title: "AirFliq | AirDrop in one move on Mac",
+    description: "Right-click, drop, shortcut or menu bar: Apple's AirDrop in one move. No account, no servers.",
     type: "website",
     images: [
       {
         url: "/og-airfliq.png",
         width: 1200,
         height: 630,
-        alt: "AirFliq - Select. Fliq. Sent.",
+        alt: "AirFliq: AirDrop in one move",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AirFliq - Select. Fliq. Sent.",
-    description: "Try every AirFliq feature free for 7 days. Lifetime Pro is $4.99.",
+    title: "AirFliq | AirDrop in one move on Mac",
+    description: "Right-click, drop, shortcut or menu bar: Apple's AirDrop in one move. No account, no servers.",
     images: ["/og-airfliq.png"],
   },
 };

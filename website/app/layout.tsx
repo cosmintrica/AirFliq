@@ -21,9 +21,9 @@ export const metadata: Metadata = {
   description:
     "Right-click in Finder, drop on a magnetic target, press a shortcut or click the menu bar, and Apple's AirDrop opens. Built in public for RevenueCat Shipaton 2026.",
   icons: {
-    icon: "/assets/airfliq-icon.png",
-    shortcut: "/assets/airfliq-icon.png",
-    apple: "/assets/airfliq-icon.png",
+    icon: "/assets/airfliq-icon-256.png",
+    shortcut: "/assets/airfliq-icon-256.png",
+    apple: "/assets/airfliq-icon-256.png",
   },
   openGraph: {
     url: "/",

@@ -131,6 +131,7 @@ export default function HeroFliq() {
     const trail = q<SVGPathElement>(".fliq-trail");
     const trailMask = q<SVGPathElement>(".fliq-trail-mask");
     const bloom = q<SVGCircleElement>(".fliq-bloom");
+    const halo = q<SVGEllipseElement>(".fliq-halo");
     const ring = q<SVGCircleElement>(".fliq-ring");
     const cta = document.querySelector<HTMLElement>("[data-fliq-target]");
 
@@ -156,14 +157,31 @@ export default function HeroFliq() {
         ? [(ctm.a * x + ctm.c * y + ctm.e - cvBox.left) * dpr, (ctm.b * x + ctm.d * y + ctm.f - cvBox.top) * dpr]
         : [x, y];
 
-    let P3: Pt = [1300, -60];
-    if (cta) {
-      const r = cta.getBoundingClientRect();
-      P3 = toSvg(r.left + r.width / 2, r.top + r.height / 2);
-    }
+    const vb = root.viewBox.baseVal;
     const P0: Pt = [600, 300];
     const P1: Pt = [700, 330];
-    const P2: Pt = [P3[0] - 140, P3[1] + 240];
+    const P3: Pt = [vb.x + vb.width - 60, vb.y + 40];
+    const P2: Pt = [0, 0];
+    /** Aims at the App Store button where it is now; layout can move before launch. */
+    const aim = () => {
+      const r = cta?.getBoundingClientRect();
+      if (r && r.width > 0) {
+        const [x, y] = toSvg(r.left + r.width / 2, r.top + r.height / 2);
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          P3[0] = x;
+          P3[1] = y;
+        }
+      }
+      P2[0] = P3[0] - 140;
+      P2[1] = P3[1] + 240;
+      const d = `M${P0[0]},${P0[1]} C${P1[0]},${P1[1]} ${P2[0]},${P2[1]} ${P3[0]},${P3[1]}`;
+      trail.setAttribute("d", d);
+      trailMask.setAttribute("d", d);
+      L = trailMask.getTotalLength();
+      trailMask.style.strokeDasharray = `${L}`;
+    };
+    let L = 0;
+    let aimed = false;
     const bez = (t: number): Pt => {
       const m = 1 - t;
       const a = m * m * m;
@@ -172,11 +190,6 @@ export default function HeroFliq() {
       const e = t * t * t;
       return [a * P0[0] + b * P1[0] + c * P2[0] + e * P3[0], a * P0[1] + b * P1[1] + c * P2[1] + e * P3[1]];
     };
-    const d = `M${P0[0]},${P0[1]} C${P1[0]},${P1[1]} ${P2[0]},${P2[1]} ${P3[0]},${P3[1]}`;
-    trail.setAttribute("d", d);
-    trailMask.setAttribute("d", d);
-    const L = trailMask.getTotalLength();
-    trailMask.style.strokeDasharray = `${L}`;
 
     const sparks: Spark[] = [];
     const hues = ["#7BE6FF", "#2ED1FF", "#4C8DFF", "#9B6BFF", "#FFFFFF"];
@@ -211,12 +224,18 @@ export default function HeroFliq() {
       glass.style.opacity = String(1 - m);
       paper.style.opacity = String(m);
       crease.style.opacity = String(seg(m, 0.7, 1));
+      halo.setAttribute("rx", String(250 - 140 * m));
+      halo.setAttribute("ry", String(140 - 85 * m));
       const fade = seg(t, T.fold[0] - 0.05, T.fold[0] + 0.14);
       content.style.opacity = String(1 - fade);
       content.setAttribute("transform", `scale(${1 - 0.3 * fade})`);
 
       // Flight along the curve to the button.
       const flying = t >= T.fly[0];
+      if (!aimed && (flying || instant)) {
+        aim();
+        aimed = true;
+      }
       const fu = launch(seg(t, T.fly[0], T.fly[1]));
       let [x, y] = P0;
       let ang = 0;
@@ -287,15 +306,26 @@ export default function HeroFliq() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     // `?fliq=1.7` draws the single frame at 1.7 s, for checking the motion.
     const frozen = Number.parseFloat(new URLSearchParams(window.location.search).get("fliq") ?? "");
-    const id = window.setTimeout(
-      () => (Number.isFinite(frozen) ? play(false, frozen) : play(reduce)),
-      reduce ? 0 : 200,
-    );
+    let id = 0;
+    let cancelled = false;
+    const start = () => {
+      if (cancelled) return;
+      // Two frames after the fonts settle, so the intro never competes with first paint.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          id = window.setTimeout(() => (Number.isFinite(frozen) ? play(false, frozen) : play(reduce)), reduce ? 0 : 120);
+        }),
+      );
+    };
+    if (document.fonts?.ready) document.fonts.ready.then(start, start);
+    else start();
     const onResize = () => {
       if (svg.current) fitViewBox(svg.current);
     };
     window.addEventListener("resize", onResize);
     return () => {
+      cancelled = true;
       window.clearTimeout(id);
       window.removeEventListener("resize", onResize);
       cancelAnimationFrame(raf.current);
@@ -331,13 +361,11 @@ export default function HeroFliq() {
             <mask id="fliqTrailMask" maskUnits="userSpaceOnUse" x="-5000" y="-5000" width="10000" height="10000">
               <path className="fliq-trail-mask" fill="none" stroke="#fff" strokeWidth="16" strokeLinecap="round" />
             </mask>
-            <filter id="fliqGlow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="9" result="b" />
-              <feMerge>
-                <feMergeNode in="b" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
+            <radialGradient id="fliqHalo">
+              <stop offset="0" stopColor="#2ED1FF" stopOpacity="0.32" />
+              <stop offset="0.6" stopColor="#1A7AFF" stopOpacity="0.12" />
+              <stop offset="1" stopColor="#1A7AFF" stopOpacity="0" />
+            </radialGradient>
           </defs>
 
           <circle className="fliq-bloom" cx="600" cy="300" r="30" fill="url(#fliqBloom)" opacity="0" />
@@ -354,11 +382,12 @@ export default function HeroFliq() {
           />
 
           <g className="fliq-body" transform="translate(600, 300)">
-            <path className="fliq-glass" d={CARD_D} fill="url(#fliqGlass)" stroke="#5CCBFF" strokeOpacity="0.85" strokeWidth="2" filter="url(#fliqGlow)" />
-            <path className="fliq-paper" d={CARD_D} fill="url(#fliqPaper)" opacity="0" filter="url(#fliqGlow)" />
+            <ellipse className="fliq-halo" rx="250" ry="140" fill="url(#fliqHalo)" />
+            <path className="fliq-glass" d={CARD_D} fill="url(#fliqGlass)" stroke="#5CCBFF" strokeOpacity="0.85" strokeWidth="2" />
+            <path className="fliq-paper" d={CARD_D} fill="url(#fliqPaper)" opacity="0" />
             <line className="fliq-crease" x1="-30" y1="0" x2="86" y2="0" stroke="#FFFFFF" strokeOpacity="0.9" strokeWidth="2" opacity="0" />
             <g className="fliq-content">
-              <image href="/assets/airfliq-icon.png" x="-150" y="-38" width="76" height="76" />
+              <image href="/assets/airfliq-icon-256.png" x="-150" y="-38" width="76" height="76" />
               <text className="fliq-title" x="-56" y="-4" fill="#F4F7FF" fontSize="27" fontWeight="760">
                 Bring it here
               </text>

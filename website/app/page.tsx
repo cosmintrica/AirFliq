@@ -24,7 +24,7 @@ import {
   XIcon,
 } from "./components/Icons";
 
-const icon = "/assets/airfliq-icon.png";
+const icon = "/assets/airfliq-icon-256.png";
 const APP_STORE = "https://apps.apple.com/app/airfliq/id6801543708";
 const GITHUB = "https://github.com/cosmintrica/AirFliq";
 const DEVPOST = "https://devpost.com/software/airfliq";
@@ -89,7 +89,7 @@ function RouteScene({ kind }: { kind: string }) {
           <li>Quick Look</li>
           <li className="mini-menu-hit"><PlaneIcon size={13} /> Send with AirFliq</li>
         </ul>
-        <span className="mini-cursor" />
+        <svg className="mini-cursor" viewBox="0 0 25 37" width="17" height="25"><path d="M1.5,1.5 L1.5,31 L9,24.5 L14,35.5 L19,33.5 L14,22.5 L23.5,22.5 Z" fill="#fff" stroke="#0b0e16" strokeWidth="2.2" strokeLinejoin="round" /></svg>
       </div>
     );
   }
@@ -234,7 +234,7 @@ export default function Home() {
         </div>
         <div className="route-grid">
           {routes.map(({ key, Icon, title, text }, i) => (
-            <article key={key} className={`route-card route-${key}`} data-reveal style={{ transitionDelay: `${i * 70}ms` }}>
+            <article key={key} className={`route-card route-${key}`} data-reveal data-animate style={{ transitionDelay: `${i * 70}ms` }}>
               <RouteScene kind={key} />
               <div className="route-copy">
                 <span className="route-icon"><Icon size={20} /></span>
@@ -254,6 +254,9 @@ export default function Home() {
         </div>
         <div data-reveal>
           <FilmEmbed id={FILM_ID} title="AirFliq: AirDrop in one move on Mac" />
+          <a className="film-youtube" href={`https://youtu.be/${FILM_ID}`} {...ext}>
+            <PlayIcon size={18} /> Watch on YouTube <ArrowUpRight size={14} />
+          </a>
         </div>
       </section>
 

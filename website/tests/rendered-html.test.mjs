@@ -88,16 +88,21 @@ test("renders launch-ready privacy and support pages", async () => {
 });
 
 test("contains product metadata and no starter preview artifacts", async () => {
-  const [page, layout, packageJson] = await Promise.all([
+  const [page, layout, packageJson, film] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/FilmEmbed.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /AirFliq/);
   assert.match(page, /7 days/);
-  assert.match(page, /no send counter/i);
-  assert.match(layout, /AirFliq - Select\. Fliq\. Sent\./);
+  assert.match(page, /A cancelled AirDrop never counts/);
+  assert.match(page, /youtu\.be\//);
+  assert.match(film, /https:\/\/www\.youtube\.com\/embed\//);
+  assert.match(film, /strict-origin-when-cross-origin/);
+  assert.doesNotMatch(film, /youtube-nocookie/);
+  assert.match(layout, /AirFliq \| AirDrop in one move on Mac/);
   assert.match(layout, /og-airfliq\.png/);
   assert.match(layout, /https:\/\/airfliq\.vercel\.app/);
   assert.doesNotMatch(layout, /airdropper-mac|chatgpt\.site/);
@@ -106,9 +111,8 @@ test("contains product metadata and no starter preview artifacts", async () => {
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
 
   await Promise.all([
-    access(new URL("../public/assets/airfliq-icon.png", import.meta.url)),
+    access(new URL("../public/assets/airfliq-icon-256.png", import.meta.url)),
+    access(new URL("../public/film/poster.jpg", import.meta.url)),
     access(new URL("../public/og-airfliq.png", import.meta.url)),
-    access(new URL("../public/screenshots/onboarding-ready.png", import.meta.url)),
-    access(new URL("../public/screenshots/onboarding-shortcut.png", import.meta.url)),
   ]);
 });

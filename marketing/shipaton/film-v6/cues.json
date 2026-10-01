@@ -1,0 +1,335 @@
+{
+  "bpm": 120,
+  "duration": 62.0,
+  "note": "Seconds from film start. Music sections + every SFX the picture needs. Picture is built to these exact times.",
+  "sections": [
+    {
+      "t": 0.0,
+      "name": "cold-open",
+      "mood": "tense, filtered ticking pulse building on every chore pop (keep the current cold open, the owner likes it)",
+      "end": 4.0
+    },
+    {
+      "t": 4.0,
+      "name": "bass-hit",
+      "mood": "KEEP the current deep bass hit exactly - the owner loved it. Let it bloom, no silence after it"
+    },
+    {
+      "t": 4.3,
+      "name": "launch-riser",
+      "mood": "fast 1.5 s build right out of the bass hit: rising noise sweep + pitch riser + accelerating snare roll, hard into 6.0",
+      "end": 6.0
+    },
+    {
+      "t": 6.0,
+      "name": "drop-1",
+      "mood": "THE DROP as the paper plane is born: energetic modern electronic - minor key, four-on-the-floor punchy kick, rolling saw/Reese sub bass with sidechain pump, off-beat open hats, claps on 2 and 4, wide dark-but-uplifting minor supersaw chord stabs; a short confident pluck motif (not a sing-song melody)",
+      "end": 22.0
+    },
+    {
+      "t": 8.0,
+      "name": "logo-accent",
+      "mood": "big impact accent inside the groove (logo slam), crash + sub drop, groove continues"
+    },
+    {
+      "t": 22.0,
+      "name": "drag",
+      "mood": "groove continues; magnetic hum builds 24.0-25.5; huge release BOOM at 25.8 with a short duck",
+      "end": 30.0
+    },
+    {
+      "t": 30.0,
+      "name": "shortcut",
+      "mood": "groove, key clicks in rhythm",
+      "end": 38.0
+    },
+    {
+      "t": 38.0,
+      "name": "menu",
+      "mood": "groove",
+      "end": 44.0
+    },
+    {
+      "t": 44.0,
+      "name": "private",
+      "mood": "breakdown: filtered pads + soft pulse, tension",
+      "end": 50.0
+    },
+    {
+      "t": 48.0,
+      "name": "riser",
+      "mood": "2-bar riser into 50.0"
+    },
+    {
+      "t": 50.0,
+      "name": "drop-2",
+      "mood": "second drop, biggest energy",
+      "end": 56.0
+    },
+    {
+      "t": 55.0,
+      "name": "riser-2",
+      "mood": "1-bar riser into the finale hit at 57.0"
+    },
+    {
+      "t": 56.0,
+      "name": "finale",
+      "mood": "impact at 57.0, wide minor-to-major lift chord, ring out; music out by 61.5, tail to 62.0",
+      "end": 62.0
+    }
+  ],
+  "sfx": [
+    {
+      "t": 1.0,
+      "type": "ui-pop-small"
+    },
+    {
+      "t": 1.5,
+      "type": "ui-pop-small"
+    },
+    {
+      "t": 2.0,
+      "type": "ui-pop-small"
+    },
+    {
+      "t": 2.5,
+      "type": "ui-pop-small"
+    },
+    {
+      "t": 3.0,
+      "type": "ui-pop-small"
+    },
+    {
+      "t": 3.5,
+      "type": "ui-pop-small"
+    },
+    {
+      "t": 4.0,
+      "type": "impact-low"
+    },
+    {
+      "t": 5.2,
+      "type": "shatter-whoosh"
+    },
+    {
+      "t": 6.2,
+      "type": "paper-fold"
+    },
+    {
+      "t": 6.4,
+      "type": "fliq-whoosh-long"
+    },
+    {
+      "t": 8.0,
+      "type": "impact-big"
+    },
+    {
+      "t": 12.0,
+      "type": "whoosh-in"
+    },
+    {
+      "t": 13.5,
+      "type": "mouse-click"
+    },
+    {
+      "t": 13.55,
+      "type": "menu-open"
+    },
+    {
+      "t": 13.9,
+      "type": "tick"
+    },
+    {
+      "t": 14.2,
+      "type": "tick"
+    },
+    {
+      "t": 14.5,
+      "type": "tick"
+    },
+    {
+      "t": 15.0,
+      "type": "mouse-click"
+    },
+    {
+      "t": 15.15,
+      "type": "paper-fold"
+    },
+    {
+      "t": 15.6,
+      "type": "fliq-whoosh"
+    },
+    {
+      "t": 16.55,
+      "type": "pop-open"
+    },
+    {
+      "t": 18.0,
+      "type": "mouse-click"
+    },
+    {
+      "t": 18.05,
+      "type": "progress-rise"
+    },
+    {
+      "t": 19.5,
+      "type": "success-chime"
+    },
+    {
+      "t": 22.0,
+      "type": "whoosh-in"
+    },
+    {
+      "t": 22.5,
+      "type": "pickup-tick"
+    },
+    {
+      "t": 23.0,
+      "type": "pop-open"
+    },
+    {
+      "t": 24.0,
+      "type": "magnetic-hum-start"
+    },
+    {
+      "t": 25.5,
+      "type": "mouse-release"
+    },
+    {
+      "t": 25.52,
+      "type": "paper-fold"
+    },
+    {
+      "t": 25.8,
+      "type": "boom-sparkle"
+    },
+    {
+      "t": 25.82,
+      "type": "fliq-whoosh"
+    },
+    {
+      "t": 30.0,
+      "type": "whoosh-in"
+    },
+    {
+      "t": 30.5,
+      "type": "key-click"
+    },
+    {
+      "t": 31.0,
+      "type": "key-click"
+    },
+    {
+      "t": 31.5,
+      "type": "key-click-heavy"
+    },
+    {
+      "t": 32.0,
+      "type": "sheet-whoosh"
+    },
+    {
+      "t": 33.5,
+      "type": "tick"
+    },
+    {
+      "t": 34.5,
+      "type": "mouse-click"
+    },
+    {
+      "t": 34.6,
+      "type": "fliq-whoosh"
+    },
+    {
+      "t": 35.5,
+      "type": "success-chime"
+    },
+    {
+      "t": 38.0,
+      "type": "whoosh-in"
+    },
+    {
+      "t": 39.0,
+      "type": "mouse-click"
+    },
+    {
+      "t": 39.02,
+      "type": "pop-open"
+    },
+    {
+      "t": 39.15,
+      "type": "tick"
+    },
+    {
+      "t": 39.3,
+      "type": "tick"
+    },
+    {
+      "t": 39.45,
+      "type": "tick"
+    },
+    {
+      "t": 39.6,
+      "type": "tick"
+    },
+    {
+      "t": 44.0,
+      "type": "whoosh-soft"
+    },
+    {
+      "t": 44.5,
+      "type": "card-flip"
+    },
+    {
+      "t": 45.0,
+      "type": "card-flip"
+    },
+    {
+      "t": 45.5,
+      "type": "card-flip"
+    },
+    {
+      "t": 46.0,
+      "type": "check-pop"
+    },
+    {
+      "t": 46.25,
+      "type": "check-pop"
+    },
+    {
+      "t": 46.5,
+      "type": "check-pop"
+    },
+    {
+      "t": 50.0,
+      "type": "impact-big"
+    },
+    {
+      "t": 51.0,
+      "type": "chip-pop"
+    },
+    {
+      "t": 52.0,
+      "type": "chip-pop"
+    },
+    {
+      "t": 53.0,
+      "type": "chip-pop"
+    },
+    {
+      "t": 56.0,
+      "type": "fliq-whoosh-long"
+    },
+    {
+      "t": 57.0,
+      "type": "impact-big"
+    },
+    {
+      "t": 57.02,
+      "type": "shimmer"
+    },
+    {
+      "t": 59.0,
+      "type": "soft-chime"
+    }
+  ]
+}

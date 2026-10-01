@@ -27,7 +27,7 @@ export default function SupportPage() {
       <nav className="legal-nav shell">
         <a className="brand" href="/">
           <Image
-            src="/assets/airfliq-icon.png"
+            src="/assets/airfliq-icon-256.png"
             alt=""
             width={34}
             height={34}

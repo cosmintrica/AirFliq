@@ -74,6 +74,8 @@ AirFliq's first release brings one-move AirDrop from Finder, global shortcuts, r
 • A new guide shows exactly where to switch on the Finder menu in System Settings and notices the switch instantly.
 • Drop a file on the magnetic target and watch it fold into a paper plane.
 • Redeem offer codes for Lifetime Pro (macOS 15 or later).
+• A calmer Lifetime Pro screen with a direct Send a File action.
+• Notifications always appear in the same corner of your main display.
 • Smoother animations throughout.
 
 ## App Review notes
@@ -90,7 +92,7 @@ Setup walks through file selection, optional folder access, the optional Finder 
 
 AirFliq follows App Review Guideline 3.1.1 for a non-subscription trial. The trial does not begin on download, first launch, onboarding, or a send attempt.
 
-Without the trial or Pro, every route can send 5 times per local day; a send is counted only after AirDrop reports it as shared, so cancelling the AirDrop panel never uses one.
+Without the trial or Pro, every route can send 5 times per local day. A send is counted only when AirDrop completes it; cancelling or closing the AirDrop panel never uses one.
 
 Before activation, the paywall states that the trial lasts 7 days and makes sending unlimited from every route; when it ends, unlimited sending stops and the user keeps 5 free sends per day; there is no auto-renewal or automatic charge; and the one-time Lifetime Pro price is shown using the current storefront's localized StoreKit price when available.
 

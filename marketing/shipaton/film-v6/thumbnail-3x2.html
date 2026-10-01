@@ -1,0 +1,63 @@
+<!doctype html><html><head><meta charset="utf-8"><title>AirFliq thumbnail</title>
+<style>
+@font-face { font-family: 'SFD'; src: url('file:///System/Library/Fonts/SFNS.ttf') format('truetype'); font-weight: 1 1000; }
+html,body{margin:0;background:#000}
+#t{position:absolute;left:0;top:0;width:1280px;height:853px;overflow:hidden;background:#04050A;font-family:'SFD';color:#F4F7FF;-webkit-font-smoothing:antialiased}
+.a{position:absolute;border-radius:50%}
+.g{background:linear-gradient(100deg,#7BE6FF 0%,#2ED1FF 22%,#1A7AFF 60%,#8D5BFF 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+#t>.in{position:absolute;left:0;top:66px;width:1280px;height:720px}
+</style></head><body><div id="t"><div class="in">
+<div class="a" style="left:-300px;top:-380px;width:1100px;height:1100px;background:radial-gradient(closest-side,rgba(26,122,255,.38),rgba(26,122,255,0))"></div>
+<div class="a" style="left:520px;top:120px;width:1100px;height:1100px;background:radial-gradient(closest-side,rgba(125,71,255,.36),rgba(125,71,255,0))"></div>
+<svg style="position:absolute;left:0;top:0" width="1280" height="720"><path d="M 300 640 C 520 640 640 470 760 330" fill="none" stroke="rgba(46,209,255,.85)" stroke-width="5" stroke-linecap="round" stroke-dasharray="10 14" style="filter:drop-shadow(0 0 10px rgba(46,209,255,.9))"/></svg>
+<div id="icon" style="position:absolute;left:790px;top:150px;filter:drop-shadow(0 40px 80px rgba(26,122,255,.6))"></div>
+<div id="plane" style="position:absolute;left:640px;top:250px;transform:rotate(-38deg) scale(1.55);filter:drop-shadow(0 0 22px rgba(46,209,255,.95))"></div>
+<div style="position:absolute;left:64px;top:96px;font:800 30px/1 'SFD';letter-spacing:.22em;color:#2ED1FF">AIRFLIQ · FOR MAC</div>
+<div style="position:absolute;left:58px;top:150px;font:850 132px/.92 'SFD';letter-spacing:-.045em">AirDrop<br><span class="g">in one<br>move.</span></div>
+</div></div>
+<script>
+let iconSerial = 0;
+function appIcon(size) {
+  const id = 'ai' + iconSerial++;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 100 100">
+  <defs>
+    <clipPath id="${id}c"><rect width="100" height="100" rx="23"/></clipPath>
+    <linearGradient id="${id}g" x1="10" y1="0" x2="90" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6FD6FF"/><stop offset=".52" stop-color="#2B6BFF"/><stop offset="1" stop-color="#6A21D6"/></linearGradient>
+    <linearGradient id="${id}s" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#fff" stop-opacity=".26"/><stop offset=".38" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="${id}v" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse"><stop offset=".5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".26"/></linearGradient>
+    <filter id="${id}f" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="-1.5" dy="3.5" stdDeviation="3.2" flood-color="#050a33" flood-opacity=".45"/></filter>
+  </defs>
+  <g clip-path="url(#${id}c)">
+    <rect width="100" height="100" fill="url(#${id}g)"/><rect width="100" height="100" fill="url(#${id}s)"/><rect width="100" height="100" fill="url(#${id}v)"/>
+    <g transform="rotate(17 54 50)">
+      <rect x="16.2" y="42.2" width="33.6" height="41.6" rx="6.4" fill="#fff" fill-opacity=".15"/>
+      <rect x="26.1" y="32.6" width="37.8" height="46.8" rx="7.2" fill="#fff" fill-opacity=".32"/>
+      <rect x="37" y="23" width="42" height="52" rx="8" fill="#fff" filter="url(#${id}f)"/>
+      <rect x="44" y="31" width="28" height="18" rx="4" fill="#2F6BFF" fill-opacity=".5"/>
+      <rect x="44" y="54" width="28" height="4.5" rx="2.25" fill="#2F6BFF" fill-opacity=".28"/>
+      <rect x="44" y="62" width="17" height="4.5" rx="2.25" fill="#2F6BFF" fill-opacity=".28"/>
+    </g>
+  </g></svg>`;
+}
+let planeSerial = 0;
+function planeSVG() {
+  const id = 'pl' + planeSerial++;
+  return `<svg width="124" height="76" viewBox="0 0 124 76">
+  <defs>
+    <linearGradient id="${id}u" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#C9EEFF"/></linearGradient>
+    <linearGradient id="${id}l" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7D47FF"/><stop offset=".5" stop-color="#1A7AFF"/><stop offset="1" stop-color="#2ED1FF"/></linearGradient>
+  </defs>
+  <polygon points="0,2 124,38 30,38" fill="url(#${id}u)"/>
+  <polygon points="30,38 124,38 0,74" fill="url(#${id}l)"/>
+  <polygon points="30,38 124,38 44,46" fill="#000" fill-opacity=".18"/>
+  <line x1="30" y1="38" x2="124" y2="38" stroke="#fff" stroke-width="1.6" stroke-opacity=".95"/>
+</svg>`;
+}
+
+
+document.getElementById('icon').innerHTML = appIcon(420);
+document.getElementById('plane').innerHTML = planeSVG();
+const z = parseFloat(new URLSearchParams(location.search).get('zoom') || '1');
+if (z !== 1) document.getElementById('t').style.zoom = String(z);
+document.fonts.ready.then(() => { window.THUMB_READY = true; });
+</script></body></html>

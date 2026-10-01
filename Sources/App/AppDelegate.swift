@@ -165,6 +165,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showMenu(from: dropView)
         case "paywall":
             showPaywall()
+        case "paywall-pro":
+#if DEBUG
+            Monetization.shared.showOwnedStateForCapture()
+#endif
+            showPaywall()
         case "paywall-limit":
             PaywallWindowController.shared.present(reason: .dailyLimitReached)
         case "finder-guide":

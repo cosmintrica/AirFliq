@@ -90,129 +90,136 @@ private struct AirFliqPaywallView: View {
         ZStack {
             AirFliqFlightField(intensity: model.isPro ? 1.25 : 0.95)
 
-            VStack(spacing: 0) {
-                header
+            if model.isPro {
+                ownedLayout
+                    .transition(.opacity.combined(with: .scale(scale: 0.97)))
+            } else {
+                VStack(spacing: 0) {
+                    header
+                        .opacity(entered ? 1 : 0)
+                        .offset(y: entered ? 0 : -10)
+
+                    HStack(spacing: 28) {
+                        ProOrbit(isPro: model.isPro,
+                                 successPulse: successPulse)
+                            .frame(width: 164, height: 164)
+
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(model.isPro ? "LIFETIME UNLOCKED" : "AIRFLIQ PRO")
+                                .font(.system(size: 11, weight: .bold, design: .rounded))
+                                .tracking(1.8)
+                                .foregroundStyle(model.isPro ? Color.airFliqGreen : .airFliqCyan)
+
+                            Text(heroTitle)
+                                .font(.system(size: 31, weight: .bold, design: .rounded))
+                                .tracking(-0.55)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 8)
+                                .contentTransition(.opacity)
+
+                            Text(heroDescription)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .lineSpacing(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 9)
+                                .contentTransition(.opacity)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .animation(.spring(response: 0.55, dampingFraction: 0.86), value: heroTitle)
+                    }
+                    .padding(.top, 18)
                     .opacity(entered ? 1 : 0)
-                    .offset(y: entered ? 0 : -10)
+                    .scaleEffect(entered ? 1 : 0.94)
+                    .blur(radius: entered || reduceMotion ? 0 : 8)
 
-                HStack(spacing: 28) {
-                    ProOrbit(isPro: model.isPro,
-                             successPulse: successPulse)
-                        .frame(width: 164, height: 164)
+                    VStack(spacing: 12) {
+                        HStack(alignment: .top, spacing: 10) {
+                            PaywallFeature(symbol: "paperplane.fill",
+                                           title: "Unlimited sends",
+                                           detail: "No daily limit")
+                            PaywallFeature(symbol: "point.3.connected.trianglepath.dotted",
+                                           title: "Every route",
+                                           detail: "Right-click, drag, shortcut")
+                            PaywallFeature(symbol: "infinity",
+                                           title: "Lifetime",
+                                           detail: "No subscription")
+                        }
 
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(model.isPro ? "LIFETIME UNLOCKED" : "AIRFLIQ PRO")
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .tracking(1.8)
-                            .foregroundStyle(model.isPro ? Color.airFliqGreen : .airFliqCyan)
+                        usage
 
-                        Text(heroTitle)
-                            .font(.system(size: 31, weight: .bold, design: .rounded))
-                            .tracking(-0.55)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 8)
-                            .contentTransition(.opacity)
-
-                        Text(heroDescription)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 9)
-                            .contentTransition(.opacity)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .animation(.spring(response: 0.55, dampingFraction: 0.86), value: heroTitle)
-                }
-                .padding(.top, 18)
-                .opacity(entered ? 1 : 0)
-                .scaleEffect(entered ? 1 : 0.94)
-                .blur(radius: entered || reduceMotion ? 0 : 8)
-
-                VStack(spacing: 12) {
-                    HStack(alignment: .top, spacing: 10) {
-                        PaywallFeature(symbol: "paperplane.fill",
-                                       title: "Unlimited sends",
-                                       detail: "No daily limit")
-                        PaywallFeature(symbol: "point.3.connected.trianglepath.dotted",
-                                       title: "Every route",
-                                       detail: "Right-click, drag, shortcut")
-                        PaywallFeature(symbol: "infinity",
-                                       title: "Lifetime",
-                                       detail: "No subscription")
-                    }
-
-                    usage
-
-                    if !model.isTrialStarted && !model.isPro {
-                        trialDisclosure
-                    }
-                }
-                .padding(16)
-                .background {
-                    AirFliqGlassSurface(accent: model.isPro ? .airFliqGreen : .airFliqViolet,
-                                       hovered: false)
-                }
-                .padding(.top, 15)
-                .opacity(entered ? 1 : 0)
-                .offset(y: entered ? 0 : 14)
-
-                VStack(spacing: 10) {
-                    if !model.isTrialStarted && !model.isPro {
-                        startTrialButton
-                    }
-                    purchaseButton
-                }
-                .padding(.top, 17)
-                .opacity(entered ? 1 : 0)
-                .offset(y: entered ? 0 : 18)
-
-                status
-                    .padding(.top, 9)
-
-                HStack(spacing: 14) {
-                    Button(action: restore) {
-                        HStack(spacing: 7) {
-                            if isRestoring {
-                                AirFliqCometLoader(color: .airFliqCyan)
-                                    .frame(width: 15, height: 15)
-                            } else {
-                                Image(systemName: "arrow.triangle.2.circlepath")
-                            }
-                            Text("Restore Purchase")
+                        if !model.isTrialStarted && !model.isPro {
+                            trialDisclosure
                         }
                     }
-                    .buttonStyle(AirFliqTextButtonStyle())
-                    .disabled(!model.isConfigured || isBusy)
+                    .padding(16)
+                    .background {
+                        AirFliqGlassSurface(accent: model.isPro ? .airFliqGreen : .airFliqViolet,
+                                           hovered: false)
+                    }
+                    .padding(.top, 15)
+                    .opacity(entered ? 1 : 0)
+                    .offset(y: entered ? 0 : 14)
 
-                    if OfferCodeRedemption.isSupported && !model.isPro {
-                        Circle()
-                            .fill(Color.white.opacity(0.16))
-                            .frame(width: 3, height: 3)
+                    VStack(spacing: 10) {
+                        if !model.isTrialStarted && !model.isPro {
+                            startTrialButton
+                        }
+                        purchaseButton
+                    }
+                    .padding(.top, 17)
+                    .opacity(entered ? 1 : 0)
+                    .offset(y: entered ? 0 : 18)
 
-                        Button(action: redeemCode) {
+                    status
+                        .padding(.top, 9)
+
+                    HStack(spacing: 14) {
+                        Button(action: restore) {
                             HStack(spacing: 7) {
-                                if isRedeeming {
+                                if isRestoring {
                                     AirFliqCometLoader(color: .airFliqCyan)
                                         .frame(width: 15, height: 15)
                                 } else {
-                                    Image(systemName: "ticket")
+                                    Image(systemName: "arrow.triangle.2.circlepath")
                                 }
-                                Text("Redeem Code")
+                                Text("Restore Purchase")
                             }
                         }
                         .buttonStyle(AirFliqTextButtonStyle())
                         .disabled(!model.isConfigured || isBusy)
-                    }
 
+                        if OfferCodeRedemption.isSupported && !model.isPro {
+                            Circle()
+                                .fill(Color.white.opacity(0.16))
+                                .frame(width: 3, height: 3)
+
+                            Button(action: redeemCode) {
+                                HStack(spacing: 7) {
+                                    if isRedeeming {
+                                        AirFliqCometLoader(color: .airFliqCyan)
+                                            .frame(width: 15, height: 15)
+                                    } else {
+                                        Image(systemName: "ticket")
+                                    }
+                                    Text("Redeem Code")
+                                }
+                            }
+                            .buttonStyle(AirFliqTextButtonStyle())
+                            .disabled(!model.isConfigured || isBusy)
+                        }
+
+                    }
+                    .padding(.top, 5)
+                    .opacity(entered ? 1 : 0)
                 }
-                .padding(.top, 5)
-                .opacity(entered ? 1 : 0)
+                .padding(.horizontal, 30)
+                .padding(.top, 24)
+                .padding(.bottom, 20)
+                .transition(.opacity)
             }
-            .padding(.horizontal, 30)
-            .padding(.top, 24)
-            .padding(.bottom, 20)
         }
+        .animation(.spring(response: 0.6, dampingFraction: 0.86), value: model.isPro)
         .background(.ultraThinMaterial)
         .frame(width: 540, height: 660)
         .onAppear {
@@ -234,6 +241,97 @@ private struct AirFliqPaywallView: View {
             withAnimation(.spring(response: 0.72, dampingFraction: 0.66)) {
                 successPulse.toggle()
             }
+        }
+    }
+
+    /// After Lifetime Pro: one calm confirmation and a useful next step,
+    /// instead of the offer screen restating that Pro is active.
+    private var ownedLayout: some View {
+        VStack(spacing: 0) {
+            header
+                .opacity(entered ? 1 : 0)
+                .offset(y: entered ? 0 : -10)
+
+            Spacer(minLength: 10)
+
+            ProOrbit(isPro: true, successPulse: successPulse)
+                .frame(width: 168, height: 168)
+                .opacity(entered ? 1 : 0)
+                .scaleEffect(entered ? 1 : 0.86)
+
+            Text("Every flight is yours.")
+                .font(.system(size: 31, weight: .bold, design: .rounded))
+                .tracking(-0.55)
+                .padding(.top, 14)
+
+            Text("Lifetime Pro is active on this Apple Account.")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.secondary)
+                .padding(.top, 7)
+
+            VStack(spacing: 0) {
+                OwnedPerkRow(symbol: "paperplane.fill",
+                             title: "Unlimited sends",
+                             detail: "No daily limit, on any day")
+                perkDivider
+                OwnedPerkRow(symbol: "point.3.connected.trianglepath.dotted",
+                             title: "Every route",
+                             detail: "Right-click, drag, shortcut and menu bar")
+                perkDivider
+                OwnedPerkRow(symbol: "infinity",
+                             title: "Yours for good",
+                             detail: "One purchase, no subscription")
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
+            .background {
+                AirFliqGlassSurface(accent: .airFliqGreen, hovered: false)
+            }
+            .padding(.top, 22)
+            .opacity(entered ? 1 : 0)
+            .offset(y: entered ? 0 : 14)
+
+            Spacer(minLength: 14)
+
+            Button(action: startSending) {
+                HStack(spacing: 10) {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 14, weight: .bold))
+                    Text("Send a File")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 48)
+            }
+            .buttonStyle(AirFliqPrimaryButtonStyle(accent: .airFliqGreen))
+            .keyboardShortcut(.defaultAction)
+            .opacity(entered ? 1 : 0)
+            .offset(y: entered ? 0 : 18)
+
+            Text(statusMessage ?? "Thank you for supporting AirFliq.")
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(height: 28)
+                .contentTransition(.opacity)
+                .animation(.easeOut(duration: 0.25), value: statusMessage)
+                .padding(.top, 6)
+        }
+        .padding(.horizontal, 30)
+        .padding(.top, 24)
+        .padding(.bottom, 14)
+    }
+
+    private var perkDivider: some View {
+        Rectangle()
+            .fill(Color.white.opacity(0.07))
+            .frame(height: 1)
+            .padding(.leading, 44)
+    }
+
+    private func startSending() {
+        presentation.window?.close()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            AirDrop.chooseAndSend()
         }
     }
 
@@ -496,7 +594,7 @@ private struct AirFliqPaywallView: View {
         return "You get \(Monetization.freeDailySendLimit) free sends every day. Try unlimited sending free for 7 days, or keep it forever with one purchase."
     }
     private var headerStatus: String {
-        if model.isPro { return "PRO ACTIVE" }
+        if model.isPro { return "LIFETIME PRO" }
         if model.isTrialActive { return "UNLIMITED TRIAL" }
         return model.freeSendsRemainingToday == 0
             ? "FREE  •  REFILLS TOMORROW"
@@ -606,7 +704,7 @@ private struct AirFliqPaywallView: View {
             switch outcome {
             case .purchased:
                 statusKind = .success
-                statusMessage = "Lifetime Pro unlocked."
+                statusMessage = "Lifetime Pro unlocked. Thank you!"
             case .cancelled:
                 statusKind = .neutral
                 statusMessage = "Purchase cancelled. Nothing was charged."
@@ -716,6 +814,39 @@ enum OfferCodeRedemption {
             return true
         }
         return (error as NSError).code == NSUserCancelledError
+    }
+}
+
+private struct OwnedPerkRow: View {
+    let symbol: String
+    let title: String
+    let detail: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.airFliqCyan)
+                .frame(width: 32, height: 32)
+                .background(Color.airFliqCyan.opacity(0.10), in: Circle())
+                .overlay(Circle().stroke(Color.airFliqCyan.opacity(0.18), lineWidth: 1))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 12.5, weight: .bold, design: .rounded))
+                Text(detail)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.airFliqGreen)
+        }
+        .padding(.vertical, 11)
+        .accessibilityElement(children: .combine)
     }
 }
 

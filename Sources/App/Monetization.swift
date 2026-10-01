@@ -441,6 +441,9 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     private func apply(_ info: CustomerInfo?) {
         guard let info else { return }
         isPro = info.entitlements.active[Self.entitlementID] != nil
+#if DEBUG
+        if capturesOwnedState { isPro = true }
+#endif
 
         // Guideline 3.1.1 requires a Price Tier 0 non-consumable trial. The
         // receipt-backed RevenueCat transaction, not a local preference, is the
@@ -641,6 +644,18 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
             return false
         }
     }
+
+#if DEBUG
+    /// Design captures only: show the owned state without a purchase.
+    /// RevenueCat updates cannot clear it while the capture runs.
+    private var capturesOwnedState = false
+
+    func showOwnedStateForCapture() {
+        capturesOwnedState = true
+        isPro = true
+        notifyChanged()
+    }
+#endif
 
     private func notifyChanged() {
         NotificationCenter.default.post(name: .airFliqAccessChanged, object: nil)

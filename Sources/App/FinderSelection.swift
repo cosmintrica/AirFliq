@@ -1,3 +1,4 @@
+#if !MAC_APP_STORE
 import Foundation
 
 enum FinderSelection {
@@ -34,3 +35,5 @@ enum FinderSelection {
         }
     }
 }
+
+#endif

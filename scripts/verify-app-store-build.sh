@@ -94,8 +94,13 @@ require_architectures() {
 }
 
 [ -d "$APP" ] || fail "app bundle not found: $APP"
+[ "$(plist_value "$APP/Contents/Info.plist" AirFliqLocalTransferQA || true)" != "true" ] || \
+    fail "local transfer QA builds must never be submitted to the App Store"
 [ -d "$EXT" ] || fail "Finder extension not found: $EXT"
 [ -f "$APP_BINARY" ] || fail "app executable not found: $APP_BINARY"
+if /usr/bin/grep -aFq 'Local transfer test (purchases disabled)' "$APP_BINARY"; then
+    fail "local transfer QA code found in the app executable"
+fi
 [ -f "$EXT_BINARY" ] || fail "extension executable not found: $EXT_BINARY"
 [ -d "$FRAMEWORK" ] || fail "RevenueCat framework not found: $FRAMEWORK"
 [ -f "$APP/Contents/Resources/PrivacyInfo.xcprivacy" ] || \
@@ -153,16 +158,32 @@ EXT_ENTITLEMENTS="$TEMP_DIR/extension-entitlements.plist"
 /usr/bin/plutil -lint "$EXT_ENTITLEMENTS" >/dev/null
 
 require_true_entitlement "$APP_ENTITLEMENTS" com.apple.security.app-sandbox
-require_true_entitlement "$APP_ENTITLEMENTS" com.apple.security.automation.apple-events
 require_true_entitlement "$APP_ENTITLEMENTS" com.apple.security.files.bookmarks.app-scope
 require_true_entitlement "$APP_ENTITLEMENTS" com.apple.security.files.user-selected.read-only
 require_true_entitlement "$APP_ENTITLEMENTS" com.apple.security.network.client
 require_true_entitlement "$EXT_ENTITLEMENTS" com.apple.security.app-sandbox
 require_true_entitlement "$EXT_ENTITLEMENTS" com.apple.security.files.user-selected.read-only
 
-/usr/bin/plutil -extract 'com\.apple\.security\.temporary-exception\.apple-events' json -o - \
-    "$APP_ENTITLEMENTS" 2>/dev/null | /usr/bin/grep -q 'com.apple.finder' || \
-    fail "Finder Apple Events temporary exception is missing"
+# Reject prohibited access in the actual signed payload, including overrides.
+/usr/bin/python3 - "$APP_ENTITLEMENTS" "$EXT_ENTITLEMENTS" "$APP/Contents/Info.plist" <<'PY_CHECK'
+import plistlib
+import sys
+for path in sys.argv[1:3]:
+    with open(path, "rb") as handle:
+        entitlements = plistlib.load(handle)
+    forbidden = [key for key in entitlements if
+                 key.startswith("com.apple.security.temporary-exception.") or
+                 key in ("com.apple.security.automation.apple-events",
+                         "com.apple.security.scripting-targets")]
+    if forbidden:
+        raise SystemExit(f"error: prohibited App Store entitlements: {forbidden}")
+with open(sys.argv[3], "rb") as handle:
+    if "NSAppleEventsUsageDescription" in plistlib.load(handle):
+        raise SystemExit("error: App Store build must not request Automation access")
+PY_CHECK
+if /usr/bin/nm -u "$APP_BINARY" | /usr/bin/grep -E 'NSAppleScript|AEDeterminePermissionToAutomateTarget' >/dev/null; then
+    fail "App Store executable still includes Finder automation"
+fi
 
 if [ "$(entitlement_value "$APP_ENTITLEMENTS" com.apple.security.get-task-allow || true)" = "true" ] || \
         [ "$(entitlement_value "$EXT_ENTITLEMENTS" com.apple.security.get-task-allow || true)" = "true" ]; then

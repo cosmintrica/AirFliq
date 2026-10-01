@@ -2,9 +2,11 @@
 
 [Website](https://airfliq.vercel.app) | [Privacy](https://airfliq.vercel.app/privacy) | [Support](https://airfliq.vercel.app/support) | [GitHub](https://github.com/cosmintrica/AirFliq)
 
-AirFliq is a native macOS utility that prepares Finder selections for Apple's
-AirDrop panel from a shortcut, menu bar icon, Finder context menu, or animated
-drag target.
+AirFliq is a native macOS utility that opens Apple's AirDrop panel from a
+shortcut, menu bar icon, Finder context menu, or animated drag target. The
+Mac App Store build opens a file picker for the shortcut and menu action;
+right-click and drag-and-drop send the selected items directly. Local direct
+distribution builds can also read Finder selection through Automation.
 
 ## Build locally
 
@@ -18,6 +20,35 @@ ad-hoc signing is enough for interface testing, but macOS privacy grants may
 reset when the binary changes. Use a stable Apple Development signature for
 repeatable permission testing.
 
+For local transfer testing without StoreKit activation, build with an installed
+Apple Development signing identity:
+
+```bash
+APP_STORE_BUILD=1 LOCAL_TRANSFER_QA=1 BUILD_CONFIGURATION=Development \
+  BUILD_DIR="$PWD/build/local-transfer-test" \
+  SIGN_IDENTITY="Apple Development: YOUR IDENTITY" ./build.sh
+```
+
+This explicit DEBUG-only mode keeps the App Store filesystem sandbox, enables
+sending, and disables trial/purchase/restore operations without granting Pro or
+changing trial history. The menu/setup status identifies the local test. It is
+not an IAP test: test trial activation separately with a Sandbox Apple Account
+and a matching storefront. Release compilation and App Store packaging reject
+this mode. Install just one app at `/Applications/AirFliq.app` and archive/remove
+other runnable copies to avoid duplicate Finder extensions.
+
+Run `scripts/verify-local-transfer-qa.sh` for the normal purchase gate, and
+`QA_SWIFT_FLAGS='-D DEBUG -D AIRFLIQ_LOCAL_QA' scripts/verify-local-transfer-qa.sh`
+for the isolated local mode checks.
+
+To walk through setup from the first screen with a Development test build
+installed in /Applications (add `--finder-off` to also test the Finder
+extension guide):
+
+```bash
+scripts/test-onboarding.sh --finder-off
+```
+
 Reset the three macOS onboarding permissions and the development-only local
 trial fallback with:
 
@@ -27,10 +58,12 @@ trial fallback with:
 
 ## Monetization
 
-The Mac App Store build lets the user explicitly start a free 7-day full-access
-trial. It never renews and never charges automatically. A non-consumable
-Lifetime Pro purchase keeps the complete app unlocked at the storefront's
-localized one-time price through RevenueCat. There is no send counter. The Mac
+Every route can send 5 times a day for free, with no trial or account. The
+Mac App Store build also lets the user explicitly start a free 7-day trial of
+unlimited sending; it never renews and never charges automatically, and when it
+ends the free daily sends remain. A non-consumable Lifetime Pro purchase makes
+sending unlimited at the storefront's localized one-time price through
+RevenueCat, and offer codes can be redeemed from the paywall on macOS 15+. The Mac
 App Store release is in progress; production purchase verification remains part
 of the release checklist. See `docs/APP-STORE.md` for the App Store Connect and
 RevenueCat checklist.

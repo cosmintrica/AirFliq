@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0334167598B1F5AE39B0360B /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA20C6881A728427CD366AAE /* main.swift */; };
+		04EF5CF9C39E260F023AF21C /* FinderMenuGuide.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73AB3877779687F21549E7D2 /* FinderMenuGuide.swift */; };
 		07742989A9755F11AEEB4BF9 /* RevenueCat.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2437C61EA90AD4CE88782CB1 /* RevenueCat.framework */; };
 		0969AB3644448897A738776F /* Motion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 280F771BD68B21A9837F3B92 /* Motion.swift */; };
 		1842B1B7067340B45109A6B3 /* Permissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 584933B40421F8D3458AA3AB /* Permissions.swift */; };
@@ -24,12 +25,14 @@
 		80066BA95EE2B34414A2CDC3 /* AirFliqFinder.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 813B3154BD53DD220120E6FB /* AirFliqFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		80C4FA7B7616C9D6F76D67F2 /* Toast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3841B5251F0F7B7FF54283 /* Toast.swift */; };
 		870EDF8EE10EB80767D5F301 /* Monetization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 145EBAA0B218757001954E9F /* Monetization.swift */; };
+		95A2705E84C82C45E2CDEDC5 /* FinderSendRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91B04CB3CF459EDCFBE2DCA /* FinderSendRequest.swift */; };
 		971B5D16529C03AED420C98E /* DragCatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = D64C4214862FAFCD2D480F6E /* DragCatcher.swift */; };
 		9E4CFA4D194A7F238B4713FD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5CBC583C05CE06F5AF521FAF /* PrivacyInfo.xcprivacy */; };
 		A15812CF3E43A65CAE65FDEB /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 259D0E545A3814464756EFF4 /* Cocoa.framework */; };
 		A517BDEF04CEA1774047B0F7 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 259D0E545A3814464756EFF4 /* Cocoa.framework */; };
 		A724472D937E054FBB9CCBC8 /* AboutWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F972A5E311A65B5D5EF026 /* AboutWindow.swift */; };
 		B0C382938AB6AA9A6EDFB605 /* FinderSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B3700630C6C0F1EF2E43167 /* FinderSelection.swift */; };
+		B164700F764F8BF1A963819B /* FolderAccessRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 365745290E9D18EA1C2DE0FA /* FolderAccessRequest.swift */; };
 		BBC8D031E3B624F64BB88D33 /* FinderSync.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 791F9AEBD689108BB40E487F /* FinderSync.framework */; };
 		BD0F1CB45CBC32740D7FA9C3 /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8E1AE7BE729EDFBA8066B24 /* HotKey.swift */; };
 		BF3E76E3C5440CC6B2B93E2E /* AirDropIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5A91F6C1F77C87519C542D /* AirDropIcon.swift */; };
@@ -38,6 +41,7 @@
 		DCC86D610D1EE38E0B5BA9D9 /* MenuPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA8BC6A1C0D17F05907B8FE9 /* MenuPanel.swift */; };
 		DDBC6722A2A0719B3F8FAF94 /* AirDrop.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74D8AD7AAF075814B0202718 /* AirDrop.swift */; };
 		EB7AB901D277FAE9AE66DEC5 /* FinderSync.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 791F9AEBD689108BB40E487F /* FinderSync.framework */; };
+		EBAE11922F4A88034D9C9B0A /* FinderSendRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A91B04CB3CF459EDCFBE2DCA /* FinderSendRequest.swift */; };
 		ECF236E844FFEE53A2122D02 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95D68AEDA35CFF2D9DF8F281 /* Carbon.framework */; };
 		EEF9FC18EC178BF4358213D4 /* RevenueCat.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 2437C61EA90AD4CE88782CB1 /* RevenueCat.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		EF59628A5ACB90F40803A7CE /* AirDropIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A5A91F6C1F77C87519C542D /* AirDropIcon.swift */; };
@@ -88,6 +92,7 @@
 		259D0E545A3814464756EFF4 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		280F771BD68B21A9837F3B92 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion.swift; sourceTree = "<group>"; };
 		2D586678BE2108EF9AC6CC68 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		365745290E9D18EA1C2DE0FA /* FolderAccessRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderAccessRequest.swift; sourceTree = "<group>"; };
 		3C7DB5FF9D8124F66B369479 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		42C0F5D22C3C4A11305108F3 /* PaywallWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallWindow.swift; sourceTree = "<group>"; };
 		50845A3769AA6D9D18671E29 /* AirFliq.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AirFliq.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -97,6 +102,7 @@
 		5CBC583C05CE06F5AF521FAF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6B3700630C6C0F1EF2E43167 /* FinderSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSelection.swift; sourceTree = "<group>"; };
 		72F78A9758D0889D77DF8FFD /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		73AB3877779687F21549E7D2 /* FinderMenuGuide.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderMenuGuide.swift; sourceTree = "<group>"; };
 		74D8AD7AAF075814B0202718 /* AirDrop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AirDrop.swift; sourceTree = "<group>"; };
 		76F972A5E311A65B5D5EF026 /* AboutWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutWindow.swift; sourceTree = "<group>"; };
 		791F9AEBD689108BB40E487F /* FinderSync.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FinderSync.framework; path = System/Library/Frameworks/FinderSync.framework; sourceTree = SDKROOT; };
@@ -104,6 +110,7 @@
 		8AFE954B6B9D3AB5D9B149B0 /* FinderSyncExt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSyncExt.swift; sourceTree = "<group>"; };
 		95D68AEDA35CFF2D9DF8F281 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
 		9F3841B5251F0F7B7FF54283 /* Toast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toast.swift; sourceTree = "<group>"; };
+		A91B04CB3CF459EDCFBE2DCA /* FinderSendRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSendRequest.swift; sourceTree = "<group>"; };
 		AA20C6881A728427CD366AAE /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		B6865AC2EA9472B06484B517 /* DropBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropBubble.swift; sourceTree = "<group>"; };
 		BA8BC6A1C0D17F05907B8FE9 /* MenuPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuPanel.swift; sourceTree = "<group>"; };
@@ -162,6 +169,7 @@
 			isa = PBXGroup;
 			children = (
 				0A5A91F6C1F77C87519C542D /* AirDropIcon.swift */,
+				A91B04CB3CF459EDCFBE2DCA /* FinderSendRequest.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -184,7 +192,9 @@
 				72F78A9758D0889D77DF8FFD /* AppDelegate.swift */,
 				D64C4214862FAFCD2D480F6E /* DragCatcher.swift */,
 				B6865AC2EA9472B06484B517 /* DropBubble.swift */,
+				73AB3877779687F21549E7D2 /* FinderMenuGuide.swift */,
 				6B3700630C6C0F1EF2E43167 /* FinderSelection.swift */,
+				365745290E9D18EA1C2DE0FA /* FolderAccessRequest.swift */,
 				F8E1AE7BE729EDFBA8066B24 /* HotKey.swift */,
 				AA20C6881A728427CD366AAE /* main.swift */,
 				BA8BC6A1C0D17F05907B8FE9 /* MenuPanel.swift */,
@@ -342,6 +352,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BF3E76E3C5440CC6B2B93E2E /* AirDropIcon.swift in Sources */,
+				95A2705E84C82C45E2CDEDC5 /* FinderSendRequest.swift in Sources */,
 				222C020A282814BD248F0EA8 /* FinderSyncExt.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -356,7 +367,10 @@
 				21E635974F538EDCAF9342F1 /* AppDelegate.swift in Sources */,
 				971B5D16529C03AED420C98E /* DragCatcher.swift in Sources */,
 				60B73DBB21AE2F1273FAAF42 /* DropBubble.swift in Sources */,
+				04EF5CF9C39E260F023AF21C /* FinderMenuGuide.swift in Sources */,
 				B0C382938AB6AA9A6EDFB605 /* FinderSelection.swift in Sources */,
+				EBAE11922F4A88034D9C9B0A /* FinderSendRequest.swift in Sources */,
+				B164700F764F8BF1A963819B /* FolderAccessRequest.swift in Sources */,
 				BD0F1CB45CBC32740D7FA9C3 /* HotKey.swift in Sources */,
 				DCC86D610D1EE38E0B5BA9D9 /* MenuPanel.swift in Sources */,
 				870EDF8EE10EB80767D5F301 /* Monetization.swift in Sources */,
@@ -533,7 +547,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = NO;
@@ -604,14 +618,14 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.0.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_SWIFT_FLAGS = "$(inherited) -warn-concurrency";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) MAC_APP_STORE DEBUG";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_TREAT_WARNINGS_AS_ERRORS = YES;

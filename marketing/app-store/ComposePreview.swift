@@ -19,7 +19,6 @@ private let preferredNames = [
     "02-drag-drop-fliq.png",
     "03-four-ways.png",
     "04-your-shortcut.png",
-    "05-seven-day-trial.png",
 ]
 
 private let sceneURLs = preferredNames

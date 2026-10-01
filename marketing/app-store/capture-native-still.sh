@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="${0:A:h:h:h}"
 MODE="${1:?usage: capture-native-still.sh MODE OUTPUT.png}"
 OUTPUT="${2:?usage: capture-native-still.sh MODE OUTPUT.png}"
-APP="$ROOT/build/AirFliq.app"
+APP="${AIRFLIQ_CAPTURE_APP:-$ROOT/build/AirFliq.app}"
 WINDOWS="$ROOT/build/tools/list-airfliq-windows"
 
 if [[ ! -x "$APP/Contents/MacOS/AirFliq" ]]; then
@@ -37,5 +37,5 @@ fi
 # Let the native entrance animation settle so the still records the final
 # presentation rather than a partially transparent transition frame.
 sleep 0.9
-/usr/sbin/screencapture -l"$window_id" -x "$OUTPUT"
+/usr/sbin/screencapture -o -l"$window_id" -x "$OUTPUT"
 echo "$OUTPUT"

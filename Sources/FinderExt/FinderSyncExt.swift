@@ -34,6 +34,7 @@ final class FinderSyncExt: FIFinderSync {
 
     @objc private func airDropSelection(_ sender: AnyObject?) {
         guard let urls = FIFinderSyncController.default().selectedItemURLs(), !urls.isEmpty else { return }
+        guard let request = FinderSendRequest.encode(urls) else { return }
 
         // Resolve the host app from this extension bundle.
         let appURL = Bundle.main.bundleURL
@@ -43,7 +44,7 @@ final class FinderSyncExt: FIFinderSync {
 
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
-        NSWorkspace.shared.open(urls, withApplicationAt: appURL, configuration: configuration) { _, error in
+        NSWorkspace.shared.open([request], withApplicationAt: appURL, configuration: configuration) { _, error in
             if let error {
                 NSLog("[AirFliq] could not launch the host app: \(error)")
             }

@@ -15,9 +15,9 @@ set -eu
 
 xcode_version="$(xcodebuild -version | sed -n '1p')"
 case "$xcode_version" in
-  "Xcode 26."*) ;;
+  "Xcode 26."*|"Xcode 27."*) ;;
   *)
-  echo "ci_pre_xcodebuild: expected a stable Xcode 26.x, found $xcode_version" >&2
+  echo "ci_pre_xcodebuild: expected a stable Xcode 26.x or 27.x, found $xcode_version" >&2
   exit 1
   ;;
 esac
@@ -47,6 +47,7 @@ if grep -Eq '^[[:space:]]*AIRFLIQ_REVENUECAT_API_KEY[[:space:]]*=' \
   exit 1
 fi
 "$repo_root/scripts/verify-trial-policy.sh"
+"$repo_root/scripts/verify-monetization-catalog.sh"
 plutil -lint \
   "$repo_root/Resources/App-Info.plist" \
   "$repo_root/Resources/Ext-Info.plist" \
@@ -57,4 +58,4 @@ plutil -lint \
   exit 1
 }
 
-echo "ci_pre_xcodebuild: stable Xcode 26.x App Store archive contract verified"
+echo "ci_pre_xcodebuild: stable Xcode App Store archive contract verified"

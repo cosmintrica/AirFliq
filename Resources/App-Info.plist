@@ -36,8 +36,6 @@
     <true/>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>AirFliq reads your Finder selection so it can prepare those files for the system AirDrop panel.</string>
     <key>CFBundleDocumentTypes</key>
     <array>
         <dict>
@@ -51,6 +49,17 @@
             <array>
                 <string>public.item</string>
             </array>
+        </dict>
+    </array>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.cosmintrica.airfliq.finder-send</string>
+            <key>CFBundleURLSchemes</key>
+            <array><string>airfliq</string></array>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
         </dict>
     </array>
 </dict>

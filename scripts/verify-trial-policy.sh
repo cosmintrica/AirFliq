@@ -36,7 +36,9 @@ require_text 'The App Store path never creates a start date.' "$PERSISTENCE"
 require_text '#if !MAC_APP_STORE' "$PERSISTENCE"
 require_text 'Start free 7-day trial' "$PAYWALL"
 require_text 'No automatic renewal or charge.' "$PAYWALL"
-require_text 'stop sending until Lifetime Pro is unlocked' "$PAYWALL"
+require_text 'When it ends, you keep' "$PAYWALL"
+require_text 'free sends per day; unlimited sending then needs Lifetime Pro.' "$PAYWALL"
+require_text 'static let dailyLimit = 5' "$MONETIZATION"
 require_text 'localized one-time Lifetime Pro price' "$PAYWALL"
 require_text 'named exactly `7-day Trial`' "$DOCS"
 require_text 'Do not attach `com.cosmintrica.airfliq.trial7day`' "$DOCS"
@@ -48,7 +50,7 @@ if /usr/bin/grep -Fq 'The 7-day full trial begins locally on first launch.' "$ME
     exit 1
 fi
 
-APP_BINARY="$ROOT/build/AirFliq.app/Contents/MacOS/AirFliq"
+APP_BINARY="${1:-$ROOT/build/AirFliq.app/Contents/MacOS/AirFliq}"
 if [ -f "$APP_BINARY" ]; then
     for source in "$MONETIZATION" "$PERSISTENCE" "$PAYWALL"; do
         if [ "$source" -nt "$APP_BINARY" ]; then

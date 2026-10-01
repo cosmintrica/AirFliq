@@ -19,6 +19,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // `open AirFliq.app` can immediately produce a reopen callback after
         // launch. Treat that as launch, not as a toolbar click to send files.
         lastOpenAt = Date()
+#if DEBUG
+        // Test builds only: `scripts/test-onboarding.sh` relaunches with this
+        // flag so setup can be walked through from the very first screen.
+        if ProcessInfo.processInfo.environment["AIRFLIQ_RESET_SETUP"] == "1" {
+            for key in ["hasRunSetup", "shortcutConfigured.v2", "shortcutName",
+                        "shortcutKeyCode.v2", "shortcutModifiers.v2",
+                        "airfliq.onboarding.didRequestFinderExtension.v1",
+                        "airfliq.onboarding.skippedSteps.v1",
+                        "selectedFolderBookmarks", "dragToSendEnabled",
+                        FreeSendAllowance.dayKey, FreeSendAllowance.countKey] {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+#endif
         Monetization.shared.configure()
         setUpStatusItem()
         sendSuccessObserver = NotificationCenter.default.addObserver(
@@ -40,24 +54,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // Setup is shown until the user finishes it once. Optional routes the
+        // user skipped (or cannot enable, for example on a managed Mac) never
+        // bring the whole setup back; the menu offers them instead.
         if !Permissions.hasRunSetup || !Shortcut.hasConfigured {
             showOnboarding()
-        } else {
-            // Permissions can be revoked later in System Settings. Re-check
-            // without blocking launch and surface setup again if anything drifted.
-            Task { [weak self] in
-                async let automation = Task.detached(priority: .utility) {
-                    Permissions.automationState()
-                }.value
-                async let menu = Task.detached(priority: .utility) {
-                    Permissions.finderExtensionState()
-                }.value
-                let states = await [automation, Permissions.filesState(), menu]
-                guard !states.allSatisfy({ $0 == .granted }) else { return }
-                Permissions.hasRunSetup = false
-                self?.showOnboarding()
-            }
         }
+        Permissions.refreshFinderExtensionCache()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -68,13 +71,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
         Monetization.shared.refresh()
+        Permissions.refreshFinderExtensionCache()
     }
 
     /// Files dropped on the Finder toolbar or Dock icon, or handed over by the
     /// Finder extension.
     func application(_ application: NSApplication, open urls: [URL]) {
         lastOpenAt = Date()
-        AirDrop.send(urls)
+        var files: [URL] = []
+        for url in urls {
+            if url.isFileURL {
+                files.append(url)
+            } else if let selection = FinderSendRequest.decode(url) {
+                files.append(contentsOf: selection)
+            } else {
+                Toast.show("Could not read the Finder selection",
+                           subtitle: "Select the files in Finder and try Send with AirFliq again.")
+                return
+            }
+        }
+        AirDrop.send(files)
     }
 
     /// Clicking the toolbar icon without dragging: fall back to the selection.
@@ -82,7 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if captureMode == nil,
            !hasVisibleWindows,
            Date().timeIntervalSince(lastOpenAt) > 0.5 {
-            AirDrop.sendFinderSelection()
+            AirDrop.chooseAndSend()
         }
         return false
     }
@@ -104,18 +120,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func showMenu(from anchor: NSView) {
         let revenue = Monetization.shared
+        revenue.refreshFreeAllowance()
+        let tone: AirFliqMenuPanel.StatusTone
+        if revenue.isPro {
+            tone = .pro
+        } else if revenue.hasUnlimitedSending {
+            tone = .trial
+        } else {
+            tone = revenue.freeSendsRemainingToday == 0 ? .exhausted : .free
+        }
         let snapshot = AirFliqMenuPanel.Snapshot(
             isPro: revenue.isPro,
-            trialStatus: revenue.trialStatusText,
-            trialExpired: revenue.isTrialExpired,
+            accessStatus: revenue.accessStatusText,
+            statusTone: tone,
+            freeRemaining: revenue.freeSendsRemainingToday,
             price: revenue.price,
             currentShortcut: Shortcut.current.name,
             dragEnabled: DragCatcher.shared.isEnabled,
-            launchAtLogin: SMAppService.mainApp.status == .enabled
+            launchAtLogin: SMAppService.mainApp.status == .enabled,
+            finderMenuOff: Permissions.cachedFinderExtensionEnabled == false
         )
+        Permissions.refreshFinderExtensionCache()
         let actions = AirFliqMenuPanel.Actions(
             send: { [weak self] in self?.sendSelection() },
             unlock: { [weak self] in self?.showPaywall() },
+            enableFinderMenu: { [weak self] in self?.showFinderMenuSetup() },
             configureShortcut: { [weak self] in self?.showShortcutSetup() },
             toggleDrag: { [weak self] in self?.toggleDragToSend() ?? DragCatcher.shared.isEnabled },
             toggleLogin: { [weak self] in
@@ -136,8 +165,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             showMenu(from: dropView)
         case "paywall":
             showPaywall()
+        case "paywall-pro":
+#if DEBUG
+            Monetization.shared.showOwnedStateForCapture()
+#endif
+            showPaywall()
+        case "paywall-limit":
+            PaywallWindowController.shared.present(reason: .dailyLimitReached)
+        case "finder-guide":
+            showFinderMenuSetup()
+        case "coach":
+            FinderMenuCoach.shared.show(onSkip: {}, onReopen: {})
         case "about":
             showAbout()
+        case "drag-launch":
+            let bubble = DropBubble()
+            captureBubble = bubble
+            let frame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+            bubble.showLaunchForCapture(near: NSPoint(x: frame.midX - 150, y: frame.midY))
         case "drag", "drag-complete":
             let bubble = DropBubble()
             captureBubble = bubble
@@ -159,7 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Actions
 
     @objc private func sendSelection() {
-        AirDrop.sendFinderSelection()
+        AirDrop.chooseAndSend()
     }
 
     @discardableResult
@@ -199,6 +244,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onboarding = OnboardingWindowController()
         }
         onboarding?.present(startAtShortcut: true)
+    }
+
+    private func showFinderMenuSetup() {
+        if onboarding == nil {
+            onboarding = OnboardingWindowController()
+        }
+        onboarding?.present(focusFinderMenu: true)
     }
 
     @objc private func showPaywall() {

@@ -3,6 +3,9 @@
 ## Product model
 
 - Free download on the Mac App Store.
+- Free tier: every route can send 5 times per local calendar day, without a
+  trial. Only a share that AirDrop reports as completed counts
+  (`FreeSendAllowance` in `Sources/App/Monetization.swift`).
 - The App Store build does not start a trial on download or first launch.
 - The user explicitly starts the trial by confirming a Price Tier 0
   non-consumable IAP named exactly `7-day Trial`.
@@ -84,8 +87,8 @@ test.
 - A misconfigured paid or non-Non-Consumable trial product is rejected by the
   release build and must not start access.
 - Relaunch and Restore Purchase recover the same verified purchase date. Seven
-  days after that date, all send entry points are locked until Lifetime Pro is
-  purchased.
+  days after that date, sending returns to the free allowance of 5 sends per
+  day until Lifetime Pro is purchased.
 - The UI shows the current storefront's localized Lifetime price before the
   user confirms trial activation whenever StoreKit has loaded it.
 
@@ -162,15 +165,17 @@ The package validator checks all of the following before the artifact exists:
 - Both `AirFliq` and `AirFliqFinder` contain ARM64 and x86_64 slices.
 - The app, Finder extension and RevenueCat framework have valid nested
   signatures.
-- App Sandbox, folder bookmarks, read-only user-selected folders and Finder
-  Apple Events entitlements are present.
+- App Sandbox, folder bookmarks, read-only user-selected items and network client
+  entitlements are present. Apple Events, scripting targets, temporary exceptions
+  and the Automation usage description are absent.
 - `get-task-allow` is not enabled.
 - The app and extension bundle IDs, versions and build numbers match.
 - Both embedded profiles are current App Store profiles for the same team.
 - The signed installer contains the expected AirFliq executable.
 
-Apple must approve the temporary Finder Apple Events exception. Keep its App
-Review explanation synchronized with `marketing/app-store/metadata-en-US.md`.
+The App Store build uses NSOpenPanel for the global shortcut/menu action and
+Finder Sync for the right-click action. Keep the App Review explanation
+synchronized with `marketing/app-store/metadata-en-US.md`.
 Passing the local validator does not replace App Store Connect processing or
 App Review.
 
@@ -205,7 +210,10 @@ MARKETING_VERSION=1.0.0 BUILD_NUMBER=2 \
   drag target.
 - Build-in-public posts using `#Shipaton`.
 - A working RevenueCat purchase or restore flow in the submitted build.
-- Offer codes or a reviewer unlock path so judges can evaluate Pro.
+- Offer codes or a reviewer unlock path so judges can evaluate Pro. One-time
+  Lifetime Pro offer codes exist (see `build/judge-access/README.md`, not in
+  Git); the paywall's Redeem Code button opens StoreKit's redemption sheet on
+  macOS 15 and later.
 
 ## Tax and invoicing note
 

@@ -171,59 +171,24 @@ private final class SharingSession: NSObject, NSSharingServiceDelegate {
         self.recoverAccess = recoverAccess
         self.finish = finish
     }
-    /// ShareKit hosts the AirDrop sheet in windows inside this process.
-    private let sheetWindows = NSHashTable<NSWindow>.weakObjects()
-    private var preexistingWindows: Set<ObjectIdentifier> = []
-    private var keyObserver: NSObjectProtocol?
+    /// Samples the AirDrop (AWDL) interface while the sheet is open.
+    private let traffic = AirDropTrafficMeter()
 
     func start() {
-        preexistingWindows = Set(NSApp.windows.map(ObjectIdentifier.init))
-        keyObserver = NotificationCenter.default.addObserver(
-            forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.trackSheetWindows() }
-        }
+        traffic.start()
         service.delegate = self
         service.perform(withItems: items)
     }
 
-    private func trackSheetWindows() {
-        for window in currentSheetWindows() { sheetWindows.add(window) }
-    }
-
-    private func currentSheetWindows() -> [NSWindow] {
-        NSApp.windows.filter {
-            !preexistingWindows.contains(ObjectIdentifier($0))
-                && NSStringFromClass(type(of: $0)).hasPrefix("SHK")
-        }
-    }
-
-    private func stopTracking() {
-        if let keyObserver { NotificationCenter.default.removeObserver(keyObserver) }
-        keyObserver = nil
-    }
-
-    private static func isOnScreen(_ window: NSWindow) -> Bool {
-        let number = window.windowNumber
-        guard number > 0,
-              let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, CGWindowID(number)) as? [[String: Any]],
-              let entry = info.first
-        else { return false }
-        return entry[kCGWindowIsOnscreen as String] as? Bool ?? false
-    }
-
     func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
-        stopTracking()
         // macOS 27 reports a cancelled AirDrop sheet as shared too, with the
-        // same items. The order differs: a real send is reported while the
-        // sheet is still on screen, a cancel only after the sheet is gone.
-        // Only a real send may use a free send or claim "Sent". When no
-        // ShareKit sheet was seen (other macOS versions), trust the callback.
-        trackSheetWindows()
-        let tracked = sheetWindows.allObjects
-        let onScreen = tracked.filter(Self.isOnScreen).count
-        let sent = tracked.isEmpty || onScreen > 0
-        Self.log.info("AirDrop completion: \(sent ? "sent" : "cancelled", privacy: .public) (sheet windows \(tracked.count, privacy: .public), on screen \(onScreen, privacy: .public))")
+        // same items, the same ShareKit sequence and the same window order.
+        // What differs is the radio: a real send asks the receiver over AWDL
+        // with a request that carries the file's preview, a burst no cancel
+        // produces. Only that may use a free send or claim "Sent".
+        let reading = traffic.stop()
+        let sent = reading.indicatesTransfer
+        Self.log.info("AirDrop completion: \(sent ? "sent" : "cancelled", privacy: .public) (awdl tx \(reading.totalSent, privacy: .public) B, largest burst \(reading.largestBurst, privacy: .public) B, samples \(reading.samples, privacy: .public))")
         guard sent else {
             finish(self)
             return
@@ -247,7 +212,7 @@ private final class SharingSession: NSObject, NSSharingServiceDelegate {
         finish(self)
     }
     func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: Error) {
-        stopTracking()
+        _ = traffic.stop()
         Self.log.info("AirDrop failed: code \((error as NSError).code, privacy: .public)")
         if recoverAccess(error) {
             finish(self)
@@ -255,5 +220,78 @@ private final class SharingSession: NSObject, NSSharingServiceDelegate {
         }
         if (error as NSError).code != NSUserCancelledError { Toast.show("Send did not finish", subtitle: error.localizedDescription) }
         finish(self)
+    }
+}
+
+/// Measures bytes sent on awdl0, the peer-to-peer interface AirDrop uses,
+/// while one AirDrop sheet is open.
+private final class AirDropTrafficMeter {
+    struct Reading {
+        var totalSent: UInt64 = 0
+        /// Most bytes sent within any 0.3 s window.
+        var largestBurst: UInt64 = 0
+        var samples = 0
+        var available = true
+
+        /// Measured on macOS 27 with one nearby iPhone: a cancelled sheet
+        /// sent 18 KB in all, at most 4 KB per 0.1 s, while it discovered
+        /// the phone. A real send sent 69 KB, with a 24 KB burst in 0.1 s
+        /// when the request carrying the file's preview went out.
+        var indicatesTransfer: Bool {
+            available && largestBurst >= 20_000 && totalSent >= 25_000
+        }
+    }
+
+    private var timer: Timer?
+    private var last: UInt32?
+    private var recent: [UInt64] = []
+    private var reading = Reading()
+
+    func start() {
+        reading = Reading()
+        recent = []
+        last = Self.sentBytes()
+        reading.available = last != nil
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.sample() }
+        }
+        // The AirDrop sheet runs the main run loop in a modal mode.
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    func stop() -> Reading {
+        sample()
+        timer?.invalidate()
+        timer = nil
+        return reading
+    }
+
+    private func sample() {
+        guard let previous = last, let now = Self.sentBytes() else { return }
+        let delta = UInt64(now &- previous)   // 32-bit counter, may wrap
+        recent.append(delta)
+        if recent.count > 3 { recent.removeFirst() }
+        reading.totalSent += delta
+        reading.largestBurst = max(reading.largestBurst, recent.reduce(0, +))
+        reading.samples += 1
+        last = now
+    }
+
+    private static func sentBytes() -> UInt32? {
+        var head: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&head) == 0, let first = head else { return nil }
+        defer { freeifaddrs(head) }
+        var cursor: UnsafeMutablePointer<ifaddrs>? = first
+        while let entry = cursor {
+            let ifa = entry.pointee
+            if let address = ifa.ifa_addr, address.pointee.sa_family == UInt8(AF_LINK),
+               String(cString: ifa.ifa_name) == "awdl0",
+               let data = ifa.ifa_data?.assumingMemoryBound(to: if_data.self) {
+                return data.pointee.ifi_obytes
+            }
+            cursor = ifa.ifa_next
+        }
+        return nil
     }
 }

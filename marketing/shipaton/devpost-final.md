@@ -63,7 +63,7 @@ The drag target needs AppKit to own the drop surface while SwiftUI renders hover
 
 ### What we learned
 
-Real users found the blocker within hours of launch: a setup that cannot finish loses the user. Optional means skippable. Trust also comes from small things: a free send is used only when AirDrop really sends. On macOS 27 a cancelled AirDrop panel reports the same "shared" result as a real send, so AirFliq tells them apart before counting.
+Real users found the blocker within hours of launch: a setup that cannot finish loses the user. Optional means skippable. Trust also comes from small things: on macOS 27 a cancelled AirDrop panel reports the same "shared" result as a real send, so AirFliq never charges a free send for a panel you cancelled.
 
 ### What's next
 

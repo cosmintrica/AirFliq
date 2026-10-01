@@ -42,7 +42,7 @@ AirFliq is a small macOS menu bar app: right-click a file in Finder, drop it on 
 Two things I learned shipping it for #Shipaton:
 
 1. Optional means skippable. My first release had a setup step for the Finder extension that people could get stuck on. Version 1.0.1 lets you skip any optional step and shows a small guide beside System Settings that notices the moment you flip the switch.
-2. Don't trust "success" callbacks blindly. On macOS 27, cancelling the AirDrop panel still tells the app the files were shared. My free tier (5 sends a day) was counting sends that never happened. A real send is reported while the AirDrop sheet is still on screen, a cancel only after it closes, so now only real sends count.
+2. Don't trust "success" callbacks blindly. On macOS 27, cancelling the AirDrop panel still tells the app the files were shared, with exactly the same data as a real send. My free tier (5 sends a day) was counting sends that never happened, so 1.0.1 never charges a free send for a cancelled panel.
 
 Free with 5 sends a day, a 7-day trial that never charges automatically, and a one-time Lifetime Pro through RevenueCat. No subscription.
 
@@ -58,31 +58,14 @@ Code: https://github.com/cosmintrica/AirFliq
 
 If you use `NSSharingService(named: .sendViaAirDrop)` and treat `sharingService(_:didShareItems:)` as success, cancels look like successful sends on macOS 27.
 
-What I measured with a small probe app:
+What I measured with a small probe app and the unified log:
 
 - Cancel: `didShareItems` with the same items as a real send. `didFailToShareItems` is never called.
 - Real send, then Done: `didShareItems` with identical items.
 - No interaction: no callback at all.
 
-The difference is ordering. ShareKit hosts the AirDrop sheet in windows inside your process (class names start with `SHK`). On a real send, the delegate is called while those windows are still on screen and they close about 80 ms later. On a cancel, they are already gone when the delegate runs.
+I tried to tell them apart inside the process: delegate arguments, NSItemProvider loads, the ShareKit windows (classes starting with `SHK`) and ShareKit's own log sequence are identical, including "transition out with success 0" for both. Checking whether the sheet was still on screen looked promising in one probe run, but it turned out to be a race.
 
-So I track the sheet windows after `perform(withItems:)` and check them in the callback:
+The only place that knows is `sharingd`: its AirDrop session metric records `transfersInitiated`, which is out of reach for a sandboxed app. So if you meter sends, don't count `didShareItems` on macOS 27.
 
-```swift
-func sharingService(_ service: NSSharingService, didShareItems items: [Any]) {
-    let sheet = sheetWindows.allObjects   // SHK* windows seen after perform
-    let sent = sheet.isEmpty || sheet.contains(where: isOnScreen)
-    guard sent else { return }            // cancelled: nothing was sent
-    recordSend()
-}
-
-func isOnScreen(_ window: NSWindow) -> Bool {
-    guard window.windowNumber > 0,
-          let info = CGWindowListCopyWindowInfo(.optionIncludingWindow,
-                                                CGWindowID(window.windowNumber)) as? [[String: Any]]
-    else { return false }
-    return info.first?[kCGWindowIsOnscreen as String] as? Bool ?? false
-}
-```
-
-If no ShareKit window was seen (other macOS versions), it falls back to trusting the callback. Full code: https://github.com/cosmintrica/AirFliq/blob/codex/app-store-resubmission/Sources/App/AirDrop.swift. Found while building AirFliq for #Shipaton.
+Has anyone found a reliable public signal for "the user actually sent something"? I'd love to hear it. Found while building AirFliq for #Shipaton: https://github.com/cosmintrica/AirFliq

@@ -70,5 +70,46 @@ struct OnboardingProgressTests {
         precondition(revoked.activeIndex == 1 && !revoked.showReadyStage)
         print("PASS: revocation during celebration returns to the unresolved step")
         revoked.stop()
+
+        // Optional routes can be skipped; setup must always be finishable,
+        // for example on a managed Mac whose policy blocks Finder extensions.
+        Shortcut.hasConfigured = false
+        Permissions.hasRunSetup = false
+        let skipping = OnboardingExperienceModel()
+        skipping.apply([.granted, .unknown, .denied])
+        precondition(skipping.activeIndex == 1 && !skipping.isComplete)
+        skipping.skipActiveStep()
+        precondition(skipping.activeIndex == 2 && skipping.isSkipped(1))
+        skipping.skipActiveStep()
+        precondition(skipping.isComplete && skipping.showShortcutStage && !skipping.showReadyStage)
+        precondition(skipping.completedStepCount == 3 && !skipping.isFullyConnected,
+                     "Skipped steps count as done; the shortcut is still missing")
+        print("PASS: folders and Finder menu can be skipped, leading to shortcut setup")
+        skipping.completeShortcutSetup()
+        try? await Task.sleep(for: .milliseconds(2050))
+        precondition(skipping.showReadyStage && Permissions.hasRunSetup)
+        precondition(skipping.completedStepCount == 4 && skipping.isFullyConnected,
+                     "A finished setup with skipped steps reads 4 / 4 READY")
+        print("PASS: setup finishes with skipped optional routes")
+        skipping.stop()
+
+        let restored = OnboardingExperienceModel()
+        restored.apply([.granted, .unknown, .denied])
+        precondition(restored.isSkipped(1) && restored.isSkipped(2) && restored.showReadyStage)
+        print("PASS: skipped routes persist across launches")
+        restored.apply([.granted, .unknown, .granted])
+        precondition(!restored.isSkipped(2) && restored.skippedSteps == [1])
+        precondition(restored.celebratingIndex == 2)
+        print("PASS: connecting a skipped route clears the skip and celebrates it")
+        restored.stop()
+
+        let guided = OnboardingExperienceModel()
+        guided.apply([.granted, .granted, .denied])
+        guided.showFinderMenuGuide()
+        precondition(guided.showsFinderMenuGuide && guided.activeIndex == 2)
+        guided.apply([.granted, .granted, .granted])
+        precondition(!guided.showsFinderMenuGuide && guided.celebratingIndex == 2)
+        print("PASS: enabling the extension leaves the guide and celebrates the route")
+        guided.stop()
     }
 }

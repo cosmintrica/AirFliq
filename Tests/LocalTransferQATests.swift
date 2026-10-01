@@ -21,8 +21,9 @@ import AppKit
         print("PASS: local transfer QA enables sending without SDK, purchase, trial or Pro mutation")
 #else
         precondition(!Monetization.isLocalTransferTest)
-        precondition(!access.canSend && !access.isTrialStarted && !access.isPro)
-        print("PASS: normal App Store build still requires verified trial or Pro")
+        precondition(!access.hasUnlimitedSending && !access.isTrialStarted && !access.isPro)
+        precondition(access.canSend == (access.freeSendsRemainingToday > 0))
+        print("PASS: normal App Store build allows only the free daily sends without a verified trial or Pro")
 #endif
     }
 }

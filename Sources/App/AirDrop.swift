@@ -1,4 +1,5 @@
 import Cocoa
+import OSLog
 
 @MainActor
 enum AirDrop {
@@ -32,7 +33,7 @@ enum AirDrop {
                     send(unique, allowPermissionPrompt: allowPermissionPrompt,
                          hasResolvedAccess: true, accessLease: accessLease)
                 } else {
-                    PaywallWindowController.shared.present()
+                    PaywallWindowController.shared.present(reason: .dailyLimitReached)
                 }
             }
             return
@@ -154,6 +155,7 @@ private final class SecurityScopedAccessLease {
 }
 
 private final class SharingSession: NSObject, NSSharingServiceDelegate {
+    private static let log = Logger(subsystem: "com.cosmintrica.airfliq", category: "airdrop")
     let service: NSSharingService
     let items: [URL]
     let accessLease: SecurityScopedAccessLease
@@ -169,21 +171,84 @@ private final class SharingSession: NSObject, NSSharingServiceDelegate {
         self.recoverAccess = recoverAccess
         self.finish = finish
     }
-    func start() { service.delegate = self; service.perform(withItems: items) }
+    /// ShareKit hosts the AirDrop sheet in windows inside this process.
+    private let sheetWindows = NSHashTable<NSWindow>.weakObjects()
+    private var preexistingWindows: Set<ObjectIdentifier> = []
+    private var keyObserver: NSObjectProtocol?
+
+    func start() {
+        preexistingWindows = Set(NSApp.windows.map(ObjectIdentifier.init))
+        keyObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.trackSheetWindows() }
+        }
+        service.delegate = self
+        service.perform(withItems: items)
+    }
+
+    private func trackSheetWindows() {
+        for window in currentSheetWindows() { sheetWindows.add(window) }
+    }
+
+    private func currentSheetWindows() -> [NSWindow] {
+        NSApp.windows.filter {
+            !preexistingWindows.contains(ObjectIdentifier($0))
+                && NSStringFromClass(type(of: $0)).hasPrefix("SHK")
+        }
+    }
+
+    private func stopTracking() {
+        if let keyObserver { NotificationCenter.default.removeObserver(keyObserver) }
+        keyObserver = nil
+    }
+
+    private static func isOnScreen(_ window: NSWindow) -> Bool {
+        let number = window.windowNumber
+        guard number > 0,
+              let info = CGWindowListCopyWindowInfo(.optionIncludingWindow, CGWindowID(number)) as? [[String: Any]],
+              let entry = info.first
+        else { return false }
+        return entry[kCGWindowIsOnscreen as String] as? Bool ?? false
+    }
+
     func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
-        // AppKit reports cancellation through didFailToShareItems with
-        // NSUserCancelledError. `recipients` is an input used to preconfigure
-        // some sharing services, not the result of the AirDrop picker, so it
-        // must not gate successful feedback here.
+        stopTracking()
+        // macOS 27 reports a cancelled AirDrop sheet as shared too, with the
+        // same items. The order differs: a real send is reported while the
+        // sheet is still on screen, a cancel only after the sheet is gone.
+        // Only a real send may use a free send or claim "Sent". When no
+        // ShareKit sheet was seen (other macOS versions), trust the callback.
+        trackSheetWindows()
+        let tracked = sheetWindows.allObjects
+        let onScreen = tracked.filter(Self.isOnScreen).count
+        let sent = tracked.isEmpty || onScreen > 0
+        Self.log.info("AirDrop completion: \(sent ? "sent" : "cancelled", privacy: .public) (sheet windows \(tracked.count, privacy: .public), on screen \(onScreen, privacy: .public))")
+        guard sent else {
+            finish(self)
+            return
+        }
         NotificationCenter.default.post(name: .airFliqSendSucceeded, object: nil)
         let access = Monetization.shared
-        Toast.show("Sent with AirFliq",
-                   subtitle: access.isPro
-                       ? "Lifetime Pro is active."
-                       : "Full trial active. \(access.trialStatusText).")
+        access.recordSuccessfulSend()
+        let subtitle: String
+        if access.isPro {
+            subtitle = "Lifetime Pro is active."
+        } else if access.hasUnlimitedSending {
+            subtitle = "Unlimited trial  •  \(access.trialRemainingShortText)."
+        } else {
+            switch access.freeSendsRemainingToday {
+            case 0: subtitle = "That was today's last free send. Unlimited sending is in the menu."
+            case 1: subtitle = "1 free send left today."
+            case let left: subtitle = "\(left) free sends left today."
+            }
+        }
+        Toast.show("Sent with AirFliq", subtitle: subtitle, kind: .success)
         finish(self)
     }
     func sharingService(_ sharingService: NSSharingService, didFailToShareItems items: [Any], error: Error) {
+        stopTracking()
+        Self.log.info("AirDrop failed: code \((error as NSError).code, privacy: .public)")
         if recoverAccess(error) {
             finish(self)
             return

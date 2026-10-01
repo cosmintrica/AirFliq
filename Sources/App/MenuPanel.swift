@@ -4,19 +4,29 @@ import SwiftUI
 @MainActor
 final class AirFliqMenuPanel {
 
+    enum StatusTone {
+        case pro
+        case trial
+        case free
+        case exhausted
+    }
+
     struct Snapshot {
         var isPro: Bool
-        var trialStatus: String
-        var trialExpired: Bool
+        var accessStatus: String
+        var statusTone: StatusTone
+        var freeRemaining: Int
         var price: String
         var currentShortcut: String
         var dragEnabled: Bool
         var launchAtLogin: Bool
+        var finderMenuOff: Bool
     }
 
     struct Actions {
         let send: () -> Void
         let unlock: () -> Void
+        let enableFinderMenu: () -> Void
         let configureShortcut: () -> Void
         let toggleDrag: () -> Bool
         let toggleLogin: () -> Bool
@@ -134,12 +144,14 @@ final class AirFliqMenuPanel {
 private final class MenuExperienceModel: ObservableObject {
     @Published var snapshot = AirFliqMenuPanel.Snapshot(
         isPro: false,
-        trialStatus: "7 days left in your trial",
-        trialExpired: false,
+        accessStatus: "5 of 5 free sends left today",
+        statusTone: .free,
+        freeRemaining: 5,
         price: "one purchase",
         currentShortcut: "⌃⌥A",
         dragEnabled: false,
-        launchAtLogin: false
+        launchAtLogin: false,
+        finderMenuOff: false
     )
     @Published var visible = false
     var actions: AirFliqMenuPanel.Actions?
@@ -167,6 +179,7 @@ private final class MenuExperienceModel: ObservableObject {
 
     func send() { close?(); actions?.send() }
     func unlock() { close?(); actions?.unlock() }
+    func enableFinderMenu() { close?(); actions?.enableFinderMenu() }
     func setup() { close?(); actions?.setup() }
     func configureShortcut() { close?(); actions?.configureShortcut() }
     func about() { close?(); actions?.about() }
@@ -197,9 +210,19 @@ private struct MenuExperienceView: View {
 
             VStack(spacing: 12) {
                 header
+                    .menuReveal(model.visible, order: 0)
                 sendButton
+                    .menuReveal(model.visible, order: 1)
 
-                if !model.snapshot.isPro { proCard }
+                if !model.snapshot.isPro {
+                    proCard
+                        .menuReveal(model.visible, order: 2)
+                }
+
+                if model.snapshot.finderMenuOff {
+                    finderMenuRow
+                        .menuReveal(model.visible, order: 3)
+                }
 
                 VStack(spacing: 7) {
                     MenuToggleRow(symbol: "cursorarrow.motionlines",
@@ -213,14 +236,17 @@ private struct MenuExperienceView: View {
                                   isOn: model.snapshot.launchAtLogin,
                                   action: model.toggleLogin)
                 }
+                .menuReveal(model.visible, order: 4)
 
                 shortcutPicker
+                    .menuReveal(model.visible, order: 5)
 
                 HStack(spacing: 8) {
                     MenuCompactButton(symbol: "gearshape", title: "Setup", action: model.setup)
                     MenuCompactButton(symbol: "info.circle", title: "About", action: model.about)
                     MenuCompactButton(symbol: "power", title: "Quit", action: model.quit)
                 }
+                .menuReveal(model.visible, order: 6)
             }
             .padding(14)
         }
@@ -252,13 +278,9 @@ private struct MenuExperienceView: View {
                 Text("AIRFLIQ")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .tracking(1.4)
-                Text(model.snapshot.isPro
-                     ? "Pro  •  Lifetime"
-                     : model.snapshot.trialStatus)
+                Text(model.snapshot.accessStatus)
                     .font(.system(size: 10.5, weight: .medium))
-                    .foregroundStyle(model.snapshot.isPro
-                                     ? Color.airFliqGreen
-                                     : (model.snapshot.trialExpired ? Color.orange : .secondary))
+                    .foregroundStyle(statusColor)
             }
             Spacer()
             Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
@@ -289,6 +311,25 @@ private struct MenuExperienceView: View {
         .buttonStyle(AirFliqPrimaryButtonStyle(accent: .airFliqBlue))
     }
 
+    private var statusColor: Color {
+        switch model.snapshot.statusTone {
+        case .pro: return .airFliqGreen
+        case .trial: return .airFliqCyan
+        case .free: return .secondary
+        case .exhausted: return .orange
+        }
+    }
+
+    private var proCardDetail: String {
+        let price = model.snapshot.price
+        let priced = price != "one purchase"
+        switch model.snapshot.statusTone {
+        case .trial: return priced ? "Keep it unlimited for \(price)" : "Keep it unlimited forever"
+        case .exhausted: return "Keep sending today, go unlimited"
+        case .free, .pro: return priced ? "Unlimited forever for \(price)" : "Unlimited forever, one purchase"
+        }
+    }
+
     private var proCard: some View {
         Button(action: model.unlock) {
             HStack(spacing: 11) {
@@ -298,17 +339,22 @@ private struct MenuExperienceView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Lifetime Pro")
                         .font(.system(size: 12, weight: .bold))
-                    Text(model.snapshot.trialExpired
-                         ? "Unlock full access forever for \(model.snapshot.price)"
-                         : "Keep full access forever for \(model.snapshot.price)")
+                    Text(proCardDetail)
                         .font(.system(size: 10.5, weight: .medium))
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
-                Spacer()
-                Text("UNLOCK")
-                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                    .tracking(0.8)
-                    .foregroundStyle(Color.airFliqCyan)
+                .layoutPriority(1)
+                Spacer(minLength: 6)
+                if model.snapshot.statusTone == .free || model.snapshot.statusTone == .exhausted {
+                    FreeSendDots(remaining: model.snapshot.freeRemaining)
+                } else {
+                    Text("UNLOCK")
+                        .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                        .tracking(0.8)
+                        .foregroundStyle(Color.airFliqCyan)
+                }
             }
             .padding(.horizontal, 13)
             .frame(maxWidth: .infinity)
@@ -318,6 +364,42 @@ private struct MenuExperienceView: View {
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(Color.airFliqViolet.opacity(0.20), lineWidth: 1)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var finderMenuRow: some View {
+        Button(action: model.enableFinderMenu) {
+            HStack(spacing: 11) {
+                Image(systemName: "filemenu.and.selection")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.airFliqViolet)
+                    .frame(width: 25)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Right-click menu is off")
+                        .font(.system(size: 11.5, weight: .semibold))
+                    Text("Turn on Send with AirFliq in Finder")
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                }
+                .layoutPriority(1)
+                Spacer()
+                Text("TURN ON")
+                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                    .tracking(0.8)
+                    .foregroundStyle(Color.airFliqCyan)
+            }
+            .padding(.horizontal, 11)
+            .frame(maxWidth: .infinity)
+            .frame(height: 43)
+            .background(Color.airFliqViolet.opacity(0.07), in:
+                            RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.airFliqViolet.opacity(0.18), lineWidth: 1)
             }
         }
         .buttonStyle(.plain)
@@ -428,5 +510,35 @@ private struct MenuCompactButton: View {
         }
         .buttonStyle(.plain)
         .onHover { value in withAnimation(.easeOut(duration: 0.2)) { hovered = value } }
+    }
+}
+
+
+/// Today's free sends, one dot each. Lit dots are still available.
+private struct FreeSendDots: View {
+    let remaining: Int
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<Monetization.freeDailySendLimit, id: \.self) { index in
+                let lit = index < remaining
+                Circle()
+                    .fill(lit ? Color.airFliqCyan : Color.white.opacity(0.14))
+                    .frame(width: 6, height: 6)
+                    .shadow(color: lit ? Color.airFliqCyan.opacity(0.7) : .clear, radius: 3)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(remaining) of \(Monetization.freeDailySendLimit) free sends left today")
+    }
+}
+
+private extension View {
+    /// Rows settle into place one after another when the panel opens.
+    func menuReveal(_ visible: Bool, order: Int) -> some View {
+        opacity(visible ? 1 : 0)
+            .offset(y: visible ? 0 : 7)
+            .animation(.spring(response: 0.5, dampingFraction: 0.84)
+                .delay(visible ? 0.03 + Double(order) * 0.028 : 0), value: visible)
     }
 }

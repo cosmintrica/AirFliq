@@ -41,6 +41,14 @@ Run `scripts/verify-local-transfer-qa.sh` for the normal purchase gate, and
 `QA_SWIFT_FLAGS='-D DEBUG -D AIRFLIQ_LOCAL_QA' scripts/verify-local-transfer-qa.sh`
 for the isolated local mode checks.
 
+To walk through setup from the first screen with a Development test build
+installed in /Applications (add `--finder-off` to also test the Finder
+extension guide):
+
+```bash
+scripts/test-onboarding.sh --finder-off
+```
+
 Reset the three macOS onboarding permissions and the development-only local
 trial fallback with:
 
@@ -50,10 +58,12 @@ trial fallback with:
 
 ## Monetization
 
-The Mac App Store build lets the user explicitly start a free 7-day full-access
-trial. It never renews and never charges automatically. A non-consumable
-Lifetime Pro purchase keeps the complete app unlocked at the storefront's
-localized one-time price through RevenueCat. There is no send counter. The Mac
+Every route can send 5 times a day for free, with no trial or account. The
+Mac App Store build also lets the user explicitly start a free 7-day trial of
+unlimited sending; it never renews and never charges automatically, and when it
+ends the free daily sends remain. A non-consumable Lifetime Pro purchase makes
+sending unlimited at the storefront's localized one-time price through
+RevenueCat, and offer codes can be redeemed from the paywall on macOS 15+. The Mac
 App Store release is in progress; production purchase verification remains part
 of the release checklist. See `docs/APP-STORE.md` for the App Store Connect and
 RevenueCat checklist.

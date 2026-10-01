@@ -3,6 +3,9 @@
 ## Product model
 
 - Free download on the Mac App Store.
+- Free tier: every route can send 5 times per local calendar day, without a
+  trial. Only a share that AirDrop reports as completed counts
+  (`FreeSendAllowance` in `Sources/App/Monetization.swift`).
 - The App Store build does not start a trial on download or first launch.
 - The user explicitly starts the trial by confirming a Price Tier 0
   non-consumable IAP named exactly `7-day Trial`.
@@ -84,8 +87,8 @@ test.
 - A misconfigured paid or non-Non-Consumable trial product is rejected by the
   release build and must not start access.
 - Relaunch and Restore Purchase recover the same verified purchase date. Seven
-  days after that date, all send entry points are locked until Lifetime Pro is
-  purchased.
+  days after that date, sending returns to the free allowance of 5 sends per
+  day until Lifetime Pro is purchased.
 - The UI shows the current storefront's localized Lifetime price before the
   user confirms trial activation whenever StoreKit has loaded it.
 
@@ -207,7 +210,10 @@ MARKETING_VERSION=1.0.0 BUILD_NUMBER=2 \
   drag target.
 - Build-in-public posts using `#Shipaton`.
 - A working RevenueCat purchase or restore flow in the submitted build.
-- Offer codes or a reviewer unlock path so judges can evaluate Pro.
+- Offer codes or a reviewer unlock path so judges can evaluate Pro. One-time
+  Lifetime Pro offer codes exist (see `build/judge-access/README.md`, not in
+  Git); the paywall's Redeem Code button opens StoreKit's redemption sheet on
+  macOS 15 and later.
 
 ## Tax and invoicing note
 

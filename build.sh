@@ -25,8 +25,10 @@ EXT_SWIFT_6_FLAGS=("${SWIFT_6_BASE_FLAGS[@]}")
 # `-default-isolation` was added after Swift 6 shipped. Keep the stricter
 # MainActor default on modern toolchains without breaking older Swift 6
 # compilers used by GitHub's macOS runners.
+# Not `grep -q`: an early exit can SIGPIPE swiftc, and under pipefail that
+# silently drops the flag and turns default-isolation code into warnings.
 if [ "${SWIFT_DEFAULT_ISOLATION:-auto}" != "off" ] && \
-        swiftc -help-hidden 2>&1 | grep -q -- "-default-isolation"; then
+        swiftc -help-hidden 2>&1 | grep -- "-default-isolation" >/dev/null; then
     # AppKit application code is main-actor isolated by default. FinderSync's
     # Objective-C overrides are explicitly nonisolated in the macOS SDK, so the
     # extension needs the matching default to remain a valid Swift 6 override.
@@ -46,7 +48,7 @@ BUILD_CONFIGURATION="${BUILD_CONFIGURATION:-Development}"
 # The source plists use Xcode build-setting placeholders so the Xcode Cloud
 # archive can keep the host app and Finder extension versions in lockstep.
 # Retain deterministic defaults for this standalone swiftc build path.
-MARKETING_VERSION="${MARKETING_VERSION:-1.0.0}"
+MARKETING_VERSION="${MARKETING_VERSION:-1.0.1}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 SWIFT_DEFINES=()
 

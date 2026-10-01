@@ -37,7 +37,9 @@ NATIVE, PRIVATE, FAST
 
 AirFliq opens the native macOS AirDrop panel. Files are not uploaded to an AirFliq server, and no AirFliq account is required.
 
-Choose when to start a free 7-day trial of every feature. It does not renew and does not charge you. After the trial, keep full access with a one-time AirFliq Pro purchase at the localized App Store price.
+FREE EVERY DAY
+
+Send up to 5 times a day for free, from every route, with no trial and no account. When you want more, start a free 7-day trial of unlimited sending. It does not renew and does not charge you. After the trial you keep your 5 free sends a day, and a one-time Lifetime Pro purchase at the localized App Store price makes sending unlimited forever.
 
 Requires macOS 13 or later and a Mac that supports AirDrop.
 
@@ -65,6 +67,15 @@ https://airfliq.vercel.app/privacy
 
 AirFliq's first release brings one-move AirDrop from Finder, global shortcuts, right-click, the menu bar, and a magnetic drag target.
 
+## Version 1.0.1 release notes
+
+• Free every day: send up to 5 times a day without starting a trial.
+• Setup always reaches the end. Folders and the Finder menu are optional and can be turned on later from the menu bar.
+• A new guide shows exactly where to switch on the Finder menu in System Settings and notices the switch instantly.
+• Drop a file on the magnetic target and watch it fold into a paper plane.
+• Redeem offer codes for Lifetime Pro (macOS 15 or later).
+• Smoother animations throughout.
+
 ## App Review notes
 
 AirFliq does not require an account or sign-in.
@@ -75,11 +86,13 @@ The Mac App Store build does not request Apple Events, Automation access, script
 
 For an existing Finder selection, enable the bundled Finder Sync extension in System Settings and choose “Send with AirFliq” from the selection’s contextual menu. The extension gets selected URLs using FIFinderSyncController.selectedItemURLs() and passes the selection paths to its host through a validated custom URL command using NSWorkspace. The command grants no file access: if the host needs access, it opens the native folder picker at the required folder. Allow & Continue saves a read-only security-scoped bookmark and resumes the pending send automatically. Files may also be dropped onto the menu bar icon or the optional drag target. All routes use NSSharingService.sendViaAirDrop.
 
-The original setup walks through file selection, folder access, the Finder extension and shortcut configuration. Folder contents are accessed only through user-selected items or folders explicitly selected by the user and persisted with app-scoped security bookmarks. Full Disk Access is never requested.
+Setup walks through file selection, optional folder access, the optional Finder extension and shortcut configuration. Optional steps can be skipped, so setup always finishes. The Finder extension step shows where the switch lives in System Settings before opening it, and a small guide beside System Settings confirms when the extension is enabled. Folder contents are accessed only through user-selected items or folders explicitly selected by the user and persisted with app-scoped security bookmarks. Full Disk Access is never requested.
 
 AirFliq follows App Review Guideline 3.1.1 for a non-subscription trial. The trial does not begin on download, first launch, onboarding, or a send attempt.
 
-Before activation, the paywall states that the trial lasts 7 days; file sharing, global shortcut, right-click, menu bar and drag-to-send will stop sending after it ends; there is no auto-renewal or automatic charge; and the one-time Lifetime Pro price is shown using the current storefront's localized StoreKit price when available.
+Without the trial or Pro, every route can send 5 times per local day; a send is counted only after AirDrop reports it as shared, so cancelling the AirDrop panel never uses one.
+
+Before activation, the paywall states that the trial lasts 7 days and makes sending unlimited from every route; when it ends, unlimited sending stops and the user keeps 5 free sends per day; there is no auto-renewal or automatic charge; and the one-time Lifetime Pro price is shown using the current storefront's localized StoreKit price when available.
 
 The reviewer starts the trial explicitly with the `7-day Trial` button. This purchases the Price Tier 0 Non-Consumable IAP named exactly `7-day Trial`, product ID `com.cosmintrica.airfliq.trial7day`, through RevenueCat. Before presenting the sheet, AirFliq requires StoreKit to report a zero-priced Non-Consumable product. AirFliq derives the trial start from an App Store or Mac App Store transaction purchase date in RevenueCat CustomerInfo and evaluates expiry against CustomerInfo requestDate. Local preferences and the Mac system clock cannot start or extend the App Store trial.
 

@@ -484,7 +484,28 @@ enum Permissions {
 #endif
     }
 
+    /// Last known Finder extension state, refreshed off the main thread. The
+    /// menu uses it to offer the right-click route without blocking.
+    private(set) static var cachedFinderExtensionEnabled: Bool?
+
+    static func refreshFinderExtensionCache() {
+        Task {
+            let state = await Task.detached(priority: .utility) {
+                finderExtensionState()
+            }.value
+            cachedFinderExtensionEnabled = state == .granted
+        }
+    }
+
+    /// Opens System Settings at the Finder extension switch. On macOS 15.2
+    /// and later Apple's API presents the File Providers sheet with AirFliq's
+    /// switch directly (verified on macOS 27). macOS 15.0 and 15.1 lacked that
+    /// sheet, so they open Login Items & Extensions instead.
     static func openExtensionSettings() {
+        if #available(macOS 15.2, *) {
+            FIFinderSyncController.showExtensionManagementInterface()
+            return
+        }
         if #available(macOS 15.0, *),
            let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"),
            NSWorkspace.shared.open(url) {

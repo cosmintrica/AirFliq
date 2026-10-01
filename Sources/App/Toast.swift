@@ -92,15 +92,11 @@ enum Toast {
         panel.contentView = host
 
         var destination = panel.frame.origin
-        let pointer = NSEvent.mouseLocation
-        // Follow the active app window first. Pointer-first placement made the
-        // HUD jump between displays when a setting was toggled from another
-        // screen, unlike a normal macOS notification.
-        let targetScreen = NSApp.keyWindow?.screen
-            ?? NSApp.mainWindow?.screen
-            ?? NSApp.windows.first(where: { $0.isVisible && $0 !== window })?.screen
-            ?? NSScreen.screens.first { NSMouseInRect(pointer, $0.frame, false) }
-            ?? NSScreen.main
+        // Always the same place, like a system notification: the top-right
+        // corner of the primary display (the one with the main menu bar).
+        // Following the key window or the pointer made it wander between
+        // positions and displays.
+        let targetScreen = NSScreen.screens.first ?? NSScreen.main
         if let screen = targetScreen {
             let visible = screen.visibleFrame
             // visibleFrame already excludes the menu bar, notch and Dock.
@@ -235,7 +231,8 @@ private struct ToastExperienceView: View {
                 .shadow(color: .black.opacity(0.34), radius: 16, y: 8)
         }
         .padding(5)
-        .scaleEffect(model.visible ? 1 : 0.88, anchor: .trailing)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .scaleEffect(model.visible ? 1 : 0.88, anchor: .topTrailing)
         .opacity(model.visible ? 1 : 0)
         .offset(x: model.visible ? 0 : 20)
     }

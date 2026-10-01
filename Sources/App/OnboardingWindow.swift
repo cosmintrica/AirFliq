@@ -36,14 +36,15 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         window.contentView = host
     }
 
-    func present(startAtShortcut: Bool = false) {
+    func present(startAtShortcut: Bool = false, focusFinderMenu: Bool = false) {
         guard let window else { return }
-        window.alphaValue = 0
+        let wasVisible = window.isVisible
+        if !wasVisible { window.alphaValue = 0 }
         NSApp.activate(ignoringOtherApps: true)
         showWindow(nil)
-        window.center()
+        if !wasVisible { window.center() }
         window.makeKeyAndOrderFront(nil)
-        model.present(forceShortcutStage: startAtShortcut)
+        model.present(forceShortcutStage: startAtShortcut, focusFinderMenu: focusFinderMenu)
 
         NSAnimationContext.runAnimationGroup { context in
             context.duration = Motion.reduceMotion ? 0 : 0.42
@@ -64,7 +65,24 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     private func finish() {
         Permissions.hasRunSetup = true
         model.stop()
-        close()
+        guard let window, !Motion.reduceMotion else {
+            close()
+            return
+        }
+        // Lift and fade out instead of vanishing: the setup hands off to the
+        // menu bar, where AirFliq now lives.
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.32
+            context.timingFunction = Motion.easeInOut
+            window.animator().alphaValue = 0
+            window.animator().setFrameOrigin(NSPoint(x: window.frame.origin.x,
+                                                     y: window.frame.origin.y + 14))
+        }, completionHandler: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.close()
+                window.alphaValue = 1
+            }
+        })
     }
 }
 
@@ -88,6 +106,8 @@ final class OnboardingExperienceModel: ObservableObject {
         let action: String
         let symbol: String
         let accent: Color
+        /// Optional routes can be skipped; setup finishes without them.
+        let skipTitle: String?
     }
 
     private static var selectionStep: Step {
@@ -98,7 +118,8 @@ final class OnboardingExperienceModel: ObservableObject {
              detail: "Your shortcut opens a file picker. For a Finder selection, use right-click or drag-and-drop.",
              action: "Continue",
              symbol: "cursorarrow.rays",
-             accent: Color(red: 0.16, green: 0.72, blue: 1.0))
+             accent: Color(red: 0.16, green: 0.72, blue: 1.0),
+             skipTitle: nil)
 #else
         Step(id: 0,
              eyebrow: "FINDER SELECTION",
@@ -106,33 +127,39 @@ final class OnboardingExperienceModel: ObservableObject {
              detail: "Allow read-only access to the files currently selected in Finder.",
              action: "Allow Finder Access",
              symbol: "cursorarrow.rays",
-             accent: Color(red: 0.16, green: 0.72, blue: 1.0))
+             accent: Color(red: 0.16, green: 0.72, blue: 1.0),
+             skipTitle: nil)
 #endif
     }
 
     let steps = [
         OnboardingExperienceModel.selectionStep,
         Step(id: 1,
-             eyebrow: "YOUR FOLDERS",
+             eyebrow: "YOUR FOLDERS  •  OPTIONAL",
              title: "You choose the boundaries.",
-             detail: "Pick only the folders AirFliq may use. Add another only when you need it.",
+             detail: "Pick the folders AirFliq may use now, or let it ask the first time a file needs access.",
              action: "Choose Folders",
              symbol: "folder.fill",
-             accent: Color(red: 0.42, green: 0.48, blue: 1.0)),
+             accent: Color(red: 0.42, green: 0.48, blue: 1.0),
+             skipTitle: "Ask me when a file needs it"),
         Step(id: 2,
-             eyebrow: "RIGHT-CLICK",
+             eyebrow: "RIGHT-CLICK  •  OPTIONAL",
              title: "Send from where you already are.",
-             detail: "Place Send with AirFliq directly inside Finder's contextual menu.",
+             detail: "Place Send with AirFliq directly inside Finder's contextual menu. It takes one switch in System Settings.",
              action: "Enable Finder Menu",
              symbol: "filemenu.and.selection",
-             accent: Color(red: 0.68, green: 0.35, blue: 1.0)),
+             accent: Color(red: 0.68, green: 0.35, blue: 1.0),
+             skipTitle: "Skip for now"),
     ]
 
     @Published private(set) var states: [PermissionState] = [.unknown, .unknown, .unknown]
+    @Published private(set) var skippedSteps: Set<Int> = OnboardingExperienceModel.loadSkippedSteps()
     @Published private(set) var isWorking = false
     @Published private(set) var presentationCycle = 0
     @Published private(set) var showReadyStage = false
     @Published private(set) var showShortcutStage = false
+    @Published private(set) var showsFinderMenuGuide = false
+    @Published private(set) var isWatchingFinderMenu = false
     @Published private(set) var celebratingIndex: Int?
     @Published private(set) var shortcutConfigured = Shortcut.hasConfigured
     @Published private(set) var isShortcutCompleting = false
@@ -151,24 +178,46 @@ final class OnboardingExperienceModel: ObservableObject {
     private var isRefreshing = false
     private var hasLoadedInitialState = false
     private var forceShortcutStage = false
+    private var forceFinderMenuFocus = false
+
+    private static let skippedStepsKey = "airfliq.onboarding.skippedSteps.v1"
 
     var completedCount: Int { states.filter { $0 == .granted }.count }
-    var completedStepCount: Int { completedCount + (shortcutConfigured ? 1 : 0) }
-    var isComplete: Bool { completedCount == steps.count }
+    /// Skipping an optional step completes it: folders are then requested on
+    /// demand, and the Finder menu can be switched on later from the menu.
+    var completedStepCount: Int {
+        steps.indices.filter(isResolved).count + (shortcutConfigured ? 1 : 0)
+    }
+    /// Every setup step is either connected or deliberately skipped.
+    var isComplete: Bool { steps.indices.allSatisfy(isResolved) }
+    /// Setup is finished: every step resolved and a shortcut chosen.
+    var isFullyConnected: Bool { isComplete && shortcutConfigured }
     var activeStep: Step { steps[activeIndex] }
     var activeState: PermissionState { states[activeIndex] }
+    var firstUnresolvedIndex: Int? { steps.indices.first { !isResolved($0) } }
 
-    func present(forceShortcutStage: Bool = false) {
+    func isResolved(_ index: Int) -> Bool {
+        states[index] == .granted || skippedSteps.contains(index)
+    }
+
+    func isSkipped(_ index: Int) -> Bool {
+        states[index] != .granted && skippedSteps.contains(index)
+    }
+
+    func present(forceShortcutStage: Bool = false, focusFinderMenu: Bool = false) {
         presentationCycle += 1
         helpMode = nil
         showReadyStage = false
         showShortcutStage = false
+        showsFinderMenuGuide = false
         celebratingIndex = nil
         dragEnabled = DragCatcher.shared.isEnabled
         currentShortcut = Shortcut.current
         shortcutConfigured = Shortcut.hasConfigured
         isShortcutCompleting = false
         self.forceShortcutStage = forceShortcutStage
+        forceFinderMenuFocus = focusFinderMenu
+        if focusFinderMenu { unskip(2) }
         hasLoadedInitialState = false
         refresh()
 
@@ -191,9 +240,9 @@ final class OnboardingExperienceModel: ObservableObject {
         refreshTask = nil
         advanceTask?.cancel()
         advanceTask = nil
-        helpWatchTask?.cancel()
-        helpWatchTask = nil
+        stopWatchingFinderMenu()
         stopWatchingSettingsClose()
+        FinderMenuCoach.shared.dismiss()
     }
 
     func selectStep(_ index: Int) {
@@ -201,6 +250,7 @@ final class OnboardingExperienceModel: ObservableObject {
         withAnimation(.spring(response: 0.68, dampingFraction: 0.86)) {
             showReadyStage = false
             showShortcutStage = false
+            showsFinderMenuGuide = false
             activeIndex = index
         }
     }
@@ -209,6 +259,7 @@ final class OnboardingExperienceModel: ObservableObject {
         guard !isWorking, !isShortcutCompleting else { return }
         withAnimation(.spring(response: 0.68, dampingFraction: 0.86)) {
             showReadyStage = false
+            showsFinderMenuGuide = false
             showShortcutStage = true
         }
     }
@@ -238,8 +289,9 @@ final class OnboardingExperienceModel: ObservableObject {
                 showShortcutStage = false
                 if isComplete {
                     showReadyStage = true
+                    Permissions.hasRunSetup = true
                 } else {
-                    activeIndex = states.firstIndex(where: { $0 != .granted }) ?? 0
+                    activeIndex = firstUnresolvedIndex ?? 0
                 }
             }
         }
@@ -263,12 +315,34 @@ final class OnboardingExperienceModel: ObservableObject {
         }
     }
 
+    /// Skips an optional route. Setup can finish without it and the menu
+    /// offers it again later; the whole setup never returns because of it.
+    func skipActiveStep() {
+        skipStep(activeIndex)
+    }
+
+    func skipStep(_ index: Int) {
+        guard steps.indices.contains(index), steps[index].skipTitle != nil,
+              states[index] != .granted, !isWorking else { return }
+        if index == 2 {
+            stopWatchingFinderMenu()
+            FinderMenuCoach.shared.dismiss()
+        }
+        skippedSteps.insert(index)
+        persistSkippedSteps()
+        withAnimation(.spring(response: 0.62, dampingFraction: 0.86)) {
+            showsFinderMenuGuide = false
+            celebratingIndex = nil
+        }
+        advanceToNextStep()
+    }
+
     func troubleshoot() {
         guard !isWorking else { return }
         let mode: HelpMode
         if states[0] != .granted {
             mode = .finderAccess
-        } else if states[1] != .granted {
+        } else if states[1] != .granted && !skippedSteps.contains(1) {
             mode = .folderAccess
         } else if states[2] != .granted {
             mode = .enableExtension
@@ -281,8 +355,6 @@ final class OnboardingExperienceModel: ObservableObject {
     }
 
     func closeHelp() {
-        helpWatchTask?.cancel()
-        helpWatchTask = nil
         withAnimation(.easeInOut(duration: 0.26)) { helpMode = nil }
     }
 
@@ -295,7 +367,7 @@ final class OnboardingExperienceModel: ObservableObject {
             advanceToNextStep()
 #else
             Permissions.openAutomationSettings()
-            startWatchingFromInlineHelp(for: .finderAccess)
+            startWatching(for: .finderAccess)
 #endif
         case .folderAccess:
             closeHelp()
@@ -303,9 +375,8 @@ final class OnboardingExperienceModel: ObservableObject {
                 self?.requestFolderAccess()
             }
         case .enableExtension:
-            watchSettingsClose()
-            Permissions.openExtensionSettings()
-            startWatchingFromInlineHelp(for: .enableExtension)
+            closeHelp()
+            showFinderMenuGuide()
         case .menuMissing:
 #if MAC_APP_STORE
             closeHelp()
@@ -324,8 +395,76 @@ final class OnboardingExperienceModel: ObservableObject {
 
     func finish() {
         guard isComplete else { return }
+        Permissions.hasRunSetup = true
         onFinish?()
     }
+
+    /// Ends setup and opens the offer, for people who want unlimited sending
+    /// straight away. The trial still starts only after App Store confirmation.
+    func finishAndShowPro() {
+        finish()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            PaywallWindowController.shared.present()
+        }
+    }
+
+    // MARK: Finder menu guide
+
+    /// Shows how to switch on the extension before anything opens. Opening
+    /// System Settings is a separate, deliberate click.
+    func showFinderMenuGuide() {
+        guard !isWorking else { return }
+        Permissions.hasRequestedFinderExtension = true
+        unskip(2)
+        withAnimation(.spring(response: 0.66, dampingFraction: 0.86)) {
+            showReadyStage = false
+            showShortcutStage = false
+            activeIndex = 2
+            showsFinderMenuGuide = true
+        }
+    }
+
+    func closeFinderMenuGuide() {
+        stopWatchingFinderMenu()
+        FinderMenuCoach.shared.dismiss()
+        withAnimation(.spring(response: 0.62, dampingFraction: 0.86)) {
+            showsFinderMenuGuide = false
+        }
+    }
+
+    func openFinderMenuSettings() {
+        Permissions.hasRequestedFinderExtension = true
+        isWatchingFinderMenu = true
+        watchSettingsClose()
+        Permissions.openExtensionSettings()
+        FinderMenuCoach.shared.show(
+            onSkip: { [weak self] in self?.skipStep(2) },
+            onReopen: { Permissions.openExtensionSettings() }
+        )
+        startWatching(for: .enableExtension)
+    }
+
+    private func stopWatchingFinderMenu() {
+        helpWatchTask?.cancel()
+        helpWatchTask = nil
+        isWatchingFinderMenu = false
+    }
+
+    private func unskip(_ index: Int) {
+        guard skippedSteps.contains(index) else { return }
+        skippedSteps.remove(index)
+        persistSkippedSteps()
+    }
+
+    private static func loadSkippedSteps() -> Set<Int> {
+        Set(UserDefaults.standard.array(forKey: skippedStepsKey) as? [Int] ?? [])
+    }
+
+    private func persistSkippedSteps() {
+        UserDefaults.standard.set(skippedSteps.sorted(), forKey: Self.skippedStepsKey)
+    }
+
+    // MARK: State
 
     private func refresh() {
         guard !isWorking, !isRefreshing, window?.isVisible == true else { return }
@@ -355,14 +494,28 @@ final class OnboardingExperienceModel: ObservableObject {
             displayed[2] = .unknown
         }
 
+        // A route connected later always wins over an earlier skip.
+        let grantedSkips = skippedSteps.filter { displayed[$0] == .granted }
+        if !grantedSkips.isEmpty {
+            skippedSteps.subtract(grantedSkips)
+            persistSkippedSteps()
+        }
+
         if !hasLoadedInitialState {
             states = displayed
-            activeIndex = displayed.firstIndex(where: { $0 != .granted }) ?? 0
-            let allPermissionsReady = displayed.allSatisfy { $0 == .granted }
-            showShortcutStage = forceShortcutStage || (allPermissionsReady && !Shortcut.hasConfigured)
-            showReadyStage = allPermissionsReady && !showShortcutStage
+            activeIndex = firstUnresolvedIndex ?? 0
+            let everyStepResolved = isComplete
+            showShortcutStage = forceShortcutStage || (everyStepResolved && !Shortcut.hasConfigured)
+            showReadyStage = everyStepResolved && !showShortcutStage
+            if forceFinderMenuFocus {
+                forceFinderMenuFocus = false
+                showShortcutStage = false
+                showReadyStage = false
+                activeIndex = 2
+                showsFinderMenuGuide = displayed[2] != .granted
+            }
             hasLoadedInitialState = true
-            Permissions.hasRunSetup = displayed.allSatisfy { $0 == .granted }
+            if everyStepResolved && Shortcut.hasConfigured { Permissions.hasRunSetup = true }
             return
         }
 
@@ -383,11 +536,12 @@ final class OnboardingExperienceModel: ObservableObject {
             // completed check, then replace it with the beginning of the real
             // animation. That flash looks exactly like a duplicated sequence.
             celebratingIndex = completed
+            if completed == 2 { showsFinderMenuGuide = false }
         }
 
         states = displayed
-        Permissions.hasRunSetup = displayed.allSatisfy { $0 == .granted }
-        if !displayed.allSatisfy({ $0 == .granted }) { showReadyStage = false }
+        if isComplete && shortcutConfigured { Permissions.hasRunSetup = true }
+        if !isComplete { showReadyStage = false }
 
         let resolvedStep = completed ?? requestedStep
         if (resolvedStep == 0 && displayed[0] == .granted && helpMode == .finderAccess)
@@ -417,12 +571,14 @@ final class OnboardingExperienceModel: ObservableObject {
         withAnimation(.spring(response: isComplete ? 0.82 : 0.72,
                               dampingFraction: isComplete ? 0.84 : 0.86)) {
             celebratingIndex = nil
+            showsFinderMenuGuide = false
             showShortcutStage = isComplete && !shortcutConfigured
             showReadyStage = isComplete && shortcutConfigured
-            if let next = states.firstIndex(where: { $0 != .granted }) {
+            if let next = firstUnresolvedIndex {
                 activeIndex = next
             }
         }
+        if isComplete && shortcutConfigured { Permissions.hasRunSetup = true }
     }
 
     private func requestFinderAccess() {
@@ -473,17 +629,13 @@ final class OnboardingExperienceModel: ObservableObject {
     }
 
     private func requestFinderMenu() {
-#if MAC_APP_STORE
-        Permissions.hasRequestedFinderExtension = true
-        helpMode = .enableExtension
-        watchSettingsClose()
-        Permissions.openExtensionSettings()
-        startWatchingFromInlineHelp(for: .enableExtension)
-#else
         if states[2] == .granted {
             Permissions.openExtensionSettings()
             return
         }
+#if MAC_APP_STORE
+        showFinderMenuGuide()
+#else
         beginSystemPresentation()
         Permissions.hasRequestedFinderExtension = true
         Task { [weak self] in
@@ -495,20 +647,16 @@ final class OnboardingExperienceModel: ObservableObject {
             isWorking = false
             apply([Permissions.selectionSetupState(), Permissions.filesState(), state],
                   celebrate: state == .granted ? 2 : nil)
-            if state != .granted {
-                withAnimation(.spring(response: 0.58, dampingFraction: 0.82)) {
-                    helpMode = .enableExtension
-                }
-            }
+            if state != .granted { showFinderMenuGuide() }
         }
 #endif
     }
 
-    private func startWatchingFromInlineHelp(for mode: HelpMode) {
+    private func startWatching(for mode: HelpMode) {
         helpWatchTask?.cancel()
         helpWatchTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                try? await Task.sleep(nanoseconds: 700_000_000)
                 guard let self, !Task.isCancelled else { return }
                 async let automation = Task.detached(priority: .utility) {
                     Permissions.selectionSetupState()
@@ -521,15 +669,28 @@ final class OnboardingExperienceModel: ObservableObject {
                     ? values[0] == .granted
                     : values[2] == .granted
                 guard resolved else { continue }
+                if mode == .enableExtension {
+                    isWatchingFinderMenu = false
+                    FinderMenuCoach.shared.complete()
+                    stopWatchingSettingsClose()
+                    // Bring setup back while the guide celebrates, so the
+                    // route visibly connects the moment the switch flips.
+                    try? await Task.sleep(nanoseconds: 650_000_000)
+                    guard !Task.isCancelled else { return }
+                    bringToFront()
+                }
                 apply(values, celebrate: mode == .finderAccess ? 0 : 2)
                 try? await Task.sleep(nanoseconds: 780_000_000)
                 guard !Task.isCancelled else { return }
                 closeHelp()
-                Toast.show(mode == .finderAccess ? "Finder access connected" : "Finder menu connected",
-                           subtitle: mode == .finderAccess
-                               ? "AirFliq can now read your current Finder selection."
-                               : "Send with AirFliq is now available on right-click.",
-                           kind: .success)
+                if window?.isVisible != true {
+                    Toast.show(mode == .finderAccess ? "Finder access connected" : "Finder menu connected",
+                               subtitle: mode == .finderAccess
+                                   ? "AirFliq can now read your current Finder selection."
+                                   : "Send with AirFliq is now available on right-click.",
+                               kind: .success)
+                }
+                helpWatchTask = nil
                 return
             }
         }
@@ -553,6 +714,7 @@ final class OnboardingExperienceModel: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 stopWatchingSettingsClose()
+                FinderMenuCoach.shared.dismiss()
                 guard window?.isVisible == true else { return }
                 bringToFront()
                 refresh()
@@ -609,6 +771,7 @@ private struct OnboardingExperience: View {
 
                 FlightRoute(
                     states: model.states,
+                    skipped: model.skippedSteps,
                     shortcutConfigured: model.shortcutConfigured,
                     celebratingIndex: model.celebratingIndex,
                     activeIndex: model.showShortcutStage || model.showReadyStage
@@ -629,19 +792,17 @@ private struct OnboardingExperience: View {
                 Group {
                     if model.showReadyStage {
                         ReadyStage(model: model)
+                            .transition(.airFliqStage)
                     } else if model.showShortcutStage {
                         ShortcutStage(model: model)
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .trailing).combined(with: .opacity),
-                                removal: .move(edge: .leading).combined(with: .opacity)
-                            ))
+                            .transition(.airFliqStage)
+                    } else if model.showsFinderMenuGuide {
+                        FinderMenuGuideStage(model: model)
+                            .transition(.airFliqStage)
                     } else {
                         PermissionStage(model: model)
                             .id(model.activeIndex)
-                            .transition(.asymmetric(
-                                insertion: .move(edge: .trailing).combined(with: .opacity),
-                                removal: .move(edge: .leading).combined(with: .opacity)
-                            ))
+                            .transition(.airFliqStage)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -700,8 +861,10 @@ private struct OnboardingExperience: View {
             Text("\(model.completedStepCount) / 4 READY")
                 .font(.system(size: 10.5, weight: .bold, design: .monospaced))
                 .tracking(0.7)
-                .foregroundStyle(model.isComplete && model.shortcutConfigured
-                                 ? Color.airFliqGreen : .secondary)
+                .foregroundStyle(model.isFullyConnected ? Color.airFliqGreen : .secondary)
+                .contentTransition(.numericText())
+                .animation(.spring(response: 0.5, dampingFraction: 0.8),
+                           value: model.completedStepCount)
 
             Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")")
                 .font(.system(size: 10.5, weight: .medium, design: .monospaced))
@@ -929,6 +1092,7 @@ private struct InlineTroubleshoot: View {
 private struct FlightRoute: View {
 
     let states: [PermissionState]
+    let skipped: Set<Int>
     let shortcutConfigured: Bool
     let celebratingIndex: Int?
     let activeIndex: Int
@@ -945,40 +1109,37 @@ private struct FlightRoute: View {
 
             ZStack {
                 ForEach(0..<3, id: \.self) { index in
-                    let segment = routeSegment(from: points[index], to: points[index + 1],
-                                               rises: index.isMultiple(of: 2))
-                    segment
-                        .stroke(Color.white.opacity(0.13),
-                                style: StrokeStyle(lineWidth: 1.35, lineCap: .round,
-                                                   dash: [3, 7]))
-
-                    segment
-                        .trim(from: 0, to: segmentIsComplete(index) ? 1 : 0)
-                        .stroke(
-                            LinearGradient(colors: index == 0
-                                           ? [.airFliqCyan, .airFliqBlue]
-                                           : index == 1
-                                               ? [.airFliqBlue, .airFliqViolet]
-                                               : [.airFliqViolet, .airFliqCyan],
-                                           startPoint: .leading, endPoint: .trailing),
-                            style: StrokeStyle(lineWidth: 2.35, lineCap: .round)
-                        )
-                        .shadow(color: .airFliqBlue.opacity(0.65), radius: 7)
-                        .animation(.spring(response: 0.95, dampingFraction: 0.9),
-                                   value: segmentIsComplete(index))
+                    RouteSegment(
+                        path: routeSegment(from: points[index], to: points[index + 1],
+                                           rises: index.isMultiple(of: 2)),
+                        complete: segmentIsComplete(index),
+                        softened: false,
+                        colors: index == 0
+                            ? [.airFliqCyan, .airFliqBlue]
+                            : index == 1
+                                ? [.airFliqBlue, .airFliqViolet]
+                                : [.airFliqViolet, .airFliqCyan]
+                    )
                 }
 
                 ForEach(0..<4, id: \.self) { index in
                     let point = points[index]
                     Button { onSelect(index) } label: {
-                        FlightPermissionGlyph(
-                            state: routeState(index),
-                            isActive: activeIndex == index,
-                            size: 32,
-                            animateCompletion: celebratingIndex == index
-                        )
+                        ZStack {
+                            if activeIndex == index && !routeIsGranted(index) && !routeIsSkipped(index) {
+                                ActiveNodePulse()
+                                    .frame(width: 32, height: 32)
+                            }
+                            FlightPermissionGlyph(
+                                state: routeState(index),
+                                isActive: activeIndex == index,
+                                size: 32,
+                                animateCompletion: celebratingIndex == index
+                            )
+                        }
+                        .contentShape(Circle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(RouteNodeButtonStyle())
                     .position(x: point.x, y: point.y)
 
                     Text(routeTitle(index))
@@ -986,6 +1147,7 @@ private struct FlightRoute: View {
                                       weight: activeIndex == index ? .semibold : .medium))
                         .foregroundStyle(activeIndex == index ? .primary : .secondary)
                         .position(x: point.x, y: point.y + 29)
+                        .animation(.easeOut(duration: 0.25), value: activeIndex)
                 }
             }
         }
@@ -1015,7 +1177,7 @@ private struct FlightRoute: View {
     }
 
     private func routeState(_ index: Int) -> PermissionState {
-        guard routeIsGranted(index) else { return .unknown }
+        guard routeIsGranted(index) || routeIsSkipped(index) else { return .unknown }
         return .granted
     }
 
@@ -1024,8 +1186,99 @@ private struct FlightRoute: View {
         return shortcutConfigured
     }
 
+    private func routeIsSkipped(_ index: Int) -> Bool {
+        index < states.count && states[index] != .granted && skipped.contains(index)
+    }
+
     private func segmentIsComplete(_ index: Int) -> Bool {
-        routeIsGranted(index) && routeIsGranted(index + 1)
+        (routeIsGranted(index) || routeIsSkipped(index))
+            && (routeIsGranted(index + 1) || routeIsSkipped(index + 1))
+    }
+}
+
+/// One leg of the flight route. When it connects, a comet travels the new
+/// line from the completed step to the next one.
+private struct RouteSegment: View {
+    let path: Path
+    let complete: Bool
+    let softened: Bool
+    let colors: [Color]
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var comet: CGFloat = 0
+    @State private var cometOpacity: Double = 0
+
+    var body: some View {
+        ZStack {
+            path.stroke(Color.white.opacity(0.13),
+                        style: StrokeStyle(lineWidth: 1.35, lineCap: .round, dash: [3, 7]))
+
+            path.trim(from: 0, to: complete ? 1 : 0)
+                .stroke(LinearGradient(colors: colors, startPoint: .leading, endPoint: .trailing),
+                        style: StrokeStyle(lineWidth: softened ? 1.7 : 2.35, lineCap: .round,
+                                           dash: softened ? [4, 5] : []))
+                .opacity(softened ? 0.5 : 1)
+                .shadow(color: .airFliqBlue.opacity(softened ? 0.18 : 0.65), radius: 7)
+                .animation(.spring(response: 0.95, dampingFraction: 0.9), value: complete)
+
+            CometTrail(progress: comet, base: path)
+                .stroke(Color.white,
+                        style: StrokeStyle(lineWidth: 3.2, lineCap: .round))
+                .shadow(color: .airFliqCyan, radius: 7)
+                .shadow(color: .airFliqCyan.opacity(0.7), radius: 2)
+                .opacity(cometOpacity)
+        }
+        .onChange(of: complete) { done in
+            guard done, !softened, !reduceMotion else { return }
+            comet = 0
+            cometOpacity = 1
+            withAnimation(.timingCurve(0.45, 0, 0.2, 1, duration: 0.95)) { comet = 1.2 }
+            withAnimation(.easeOut(duration: 0.3).delay(0.78)) { cometOpacity = 0 }
+        }
+    }
+}
+
+nonisolated private struct CometTrail: Shape {
+    var progress: CGFloat
+    let base: Path
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let head = min(1, max(0, progress))
+        let tail = min(1, max(0, progress - 0.2))
+        guard head > tail else { return Path() }
+        return base.trimmedPath(from: tail, to: head)
+    }
+}
+
+/// "You are here": a slow sonar ring around the step waiting for the user.
+private struct ActiveNodePulse: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var expanding = false
+
+    var body: some View {
+        Circle()
+            .stroke(Color.airFliqCyan.opacity(0.55), lineWidth: 1.2)
+            .scaleEffect(expanding ? 1.75 : 1)
+            .opacity(expanding ? 0 : 0.9)
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.easeOut(duration: 1.8).repeatForever(autoreverses: false)) {
+                    expanding = true
+                }
+            }
+    }
+}
+
+private struct RouteNodeButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.9 : 1)
+            .animation(.spring(response: 0.28, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
@@ -1086,27 +1339,41 @@ private struct PermissionStage: View {
                                 .stroke(Color.airFliqGreen.opacity(0.28), lineWidth: 1)
                         }
                     } else {
-                        Button(action: model.performActiveAction) {
-                            HStack(spacing: 10) {
-                                if model.isWorking {
-                                    AirFliqCometLoader(color: step.accent)
-                                        .frame(width: 19, height: 19)
-                                } else {
-                                    Image(systemName: state == .granted
-                                          ? "slider.horizontal.3" : "arrow.up.right")
-                                        .font(.system(size: 11, weight: .bold))
+                        VStack(spacing: 5) {
+                            Button(action: model.performActiveAction) {
+                                HStack(spacing: 10) {
+                                    if model.isWorking {
+                                        AirFliqCometLoader(color: step.accent)
+                                            .frame(width: 19, height: 19)
+                                    } else {
+                                        Image(systemName: state == .granted
+                                              ? "slider.horizontal.3" : "arrow.up.right")
+                                            .font(.system(size: 11, weight: .bold))
+                                    }
+                                    Text(buttonTitle)
+                                        .font(.system(size: 13, weight: .semibold))
                                 }
-                                Text(buttonTitle)
-                                    .font(.system(size: 13, weight: .semibold))
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
                             }
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 44)
+                            .buttonStyle(AirFliqPrimaryButtonStyle(accent: step.accent))
+                            .disabled(model.isWorking)
+
+                            if let skipTitle = step.skipTitle, state != .granted {
+                                Button(action: model.skipActiveStep) {
+                                    HStack(spacing: 6) {
+                                        Text(model.isSkipped(step.id) ? "Skipped  •  \(skipTitle)" : skipTitle)
+                                        Image(systemName: "arrow.right")
+                                            .font(.system(size: 9, weight: .bold))
+                                    }
+                                }
+                                .buttonStyle(AirFliqTextButtonStyle())
+                                .disabled(model.isWorking)
+                            }
                         }
-                        .buttonStyle(AirFliqPrimaryButtonStyle(accent: step.accent))
-                        .disabled(model.isWorking)
                     }
                 }
-                .padding(.top, 21)
+                .padding(.top, 19)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -1127,9 +1394,15 @@ private struct PermissionStage: View {
         if step.id == 0 { return "How it works" }
 #endif
         if state == .granted {
-            return step.id == 1 ? "Manage Folders" : "Review Access"
+            return step.id == 1 ? "Manage Folders" : "Review in Settings"
         }
-        if state == .denied { return "Fix Access" }
+        if state == .denied {
+            switch step.id {
+            case 1: return "Choose Folders Again"
+            case 2: return "Turn On Finder Menu"
+            default: return "Fix Access"
+            }
+        }
         return step.action
     }
 
@@ -1144,10 +1417,112 @@ private struct PermissionStage: View {
     private var displayDetail: String {
         if model.celebratingIndex == step.id {
             return step.id == 2
-                ? "The final connection is settling before AirFliq takes you to the ready screen."
+                ? "Send with AirFliq is now in Finder's right-click menu."
                 : "AirFliq is moving the flight path to your next setup step."
         }
         return step.detail
+    }
+}
+
+/// The Right-click step's guide. It explains the one switch in System
+/// Settings first; opening Settings is a separate, deliberate click.
+private struct FinderMenuGuideStage: View {
+    @ObservedObject var model: OnboardingExperienceModel
+    @State private var revealed = false
+
+    private let accent = Color(red: 0.68, green: 0.35, blue: 1.0)
+
+    var body: some View {
+        HStack(spacing: 24) {
+            SettingsPathIllustration(connected: model.states[2] == .granted)
+                .frame(width: 212, height: 196)
+                .scaleEffect(revealed ? 1 : 0.94)
+                .opacity(revealed ? 1 : 0)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("RIGHT-CLICK  •  ONE SWITCH")
+                    .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                    .tracking(1.5)
+                    .foregroundStyle(accent)
+
+                Text("Switch on AirFliq in System Settings.")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .tracking(-0.3)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(FinderMenuSettingsPath.steps.enumerated()), id: \.offset) { index, text in
+                        HStack(alignment: .top, spacing: 9) {
+                            Text("\(index + 1)")
+                                .font(.system(size: 9.5, weight: .bold, design: .rounded))
+                                .foregroundStyle(.white)
+                                .frame(width: 19, height: 19)
+                                .background(accent, in: Circle())
+                                .shadow(color: accent.opacity(0.55), radius: 5)
+                            Text(text)
+                                .font(.system(size: 11.5, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .opacity(revealed ? 1 : 0)
+                        .offset(x: revealed ? 0 : 10)
+                        .animation(.spring(response: 0.55, dampingFraction: 0.84)
+                            .delay(0.12 + Double(index) * 0.07), value: revealed)
+                    }
+                }
+                .padding(.top, 12)
+
+                Button(action: model.openFinderMenuSettings) {
+                    HStack(spacing: 9) {
+                        if model.isWatchingFinderMenu {
+                            AirFliqCometLoader(color: .white)
+                                .frame(width: 17, height: 17)
+                        } else {
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 11, weight: .bold))
+                        }
+                        Text(model.isWatchingFinderMenu
+                             ? "Waiting for the switch…"
+                             : "Open System Settings")
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                }
+                .buttonStyle(AirFliqPrimaryButtonStyle(accent: accent))
+                .padding(.top, 14)
+                .accessibilityHint("Opens System Settings. AirFliq detects the switch automatically.")
+
+                HStack {
+                    Button(action: model.closeFinderMenuGuide) {
+                        HStack(spacing: 5) {
+                            Image(systemName: "arrow.left")
+                                .font(.system(size: 9, weight: .bold))
+                            Text("Back")
+                        }
+                    }
+                    .buttonStyle(AirFliqTextButtonStyle())
+                    Spacer()
+                    Button(action: model.skipActiveStep) {
+                        HStack(spacing: 5) {
+                            Text("Skip for now")
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 9, weight: .bold))
+                        }
+                    }
+                    .buttonStyle(AirFliqTextButtonStyle())
+                }
+                .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 20)
+        .background { AirFliqGlassSurface(accent: accent, hovered: model.isWatchingFinderMenu) }
+        .onAppear {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.82)) { revealed = true }
+        }
     }
 }
 
@@ -1490,6 +1865,7 @@ private struct ShortcutPresetStyle: ButtonStyle {
 private struct ReadyStage: View {
 
     @ObservedObject var model: OnboardingExperienceModel
+    @ObservedObject private var monetization = Monetization.shared
     @State private var revealed = false
 
     var body: some View {
@@ -1520,6 +1896,22 @@ private struct ReadyStage: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 9)
 
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        ReadyRouteChip(symbol: "keyboard", title: model.currentShortcut.name,
+                                       isOn: true, order: 0, revealed: revealed)
+                        ReadyRouteChip(symbol: "menubar.rectangle", title: "Menu bar",
+                                       isOn: true, order: 1, revealed: revealed)
+                    }
+                    HStack(spacing: 6) {
+                        ReadyRouteChip(symbol: "filemenu.and.selection", title: "Right-click",
+                                       isOn: model.states[2] == .granted, order: 2, revealed: revealed)
+                        ReadyRouteChip(symbol: "cursorarrow.motionlines", title: "Drag target",
+                                       isOn: model.dragEnabled, order: 3, revealed: revealed)
+                    }
+                }
+                .padding(.top, 12)
+
                 Button(action: model.finish) {
                     HStack(spacing: 10) {
                         Text("Start sending")
@@ -1530,7 +1922,20 @@ private struct ReadyStage: View {
                     .frame(height: 44)
                 }
                 .buttonStyle(AirFliqPrimaryButtonStyle(accent: .airFliqGreen))
-                .padding(.top, 20)
+                .padding(.top, 15)
+
+                if !monetization.isPro && !monetization.isTrialStarted {
+                    Button(action: model.finishAndShowPro) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 9.5, weight: .bold))
+                            Text("\(Monetization.freeDailySendLimit) free sends a day  •  Try unlimited for 7 days")
+                        }
+                    }
+                    .buttonStyle(AirFliqTextButtonStyle())
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 3)
+                }
             }
         }
         .padding(.horizontal, 28)
@@ -1653,6 +2058,7 @@ private struct FlightPermissionGlyph: View {
     let isActive: Bool
     let size: CGFloat
     let animateCompletion: Bool
+    var skipped = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var progress: CGFloat = 0
@@ -1665,6 +2071,10 @@ private struct FlightPermissionGlyph: View {
             let radius = min(canvasSize.width, canvasSize.height) / 2 - 2
 
             switch state {
+            case .unknown where skipped:
+                drawSegments(context: &context, center: center, radius: radius,
+                             litProgress: 0, baseColor: Color.airFliqViolet.opacity(isActive ? 0.6 : 0.42))
+                drawSkipMark(context: &context, center: center, radius: radius)
             case .unknown:
                 drawSegments(context: &context, center: center, radius: radius,
                              litProgress: 0, baseColor: Color.white.opacity(isActive ? 0.28 : 0.16))
@@ -1788,6 +2198,20 @@ private struct FlightPermissionGlyph: View {
         }
     }
 
+    private func drawSkipMark(context: inout GraphicsContext,
+                              center: CGPoint, radius: CGFloat) {
+        let side = radius * 0.26
+        var mark = Path()
+        for shift in [-side * 0.62, side * 0.62] {
+            mark.move(to: CGPoint(x: center.x + shift - side * 0.5, y: center.y - side))
+            mark.addLine(to: CGPoint(x: center.x + shift + side * 0.5, y: center.y))
+            mark.addLine(to: CGPoint(x: center.x + shift - side * 0.5, y: center.y + side))
+        }
+        context.stroke(mark, with: .color(Color.white.opacity(0.72)),
+                       style: StrokeStyle(lineWidth: max(1.4, radius * 0.1),
+                                          lineCap: .round, lineJoin: .round))
+    }
+
     private func drawExclamation(context: inout GraphicsContext,
                                  center: CGPoint, radius: CGFloat) {
         var mark = Path()
@@ -1838,17 +2262,85 @@ struct AirFliqSuccessBurst: View {
 
     var body: some View {
         ZStack {
-            ForEach(0..<12, id: \.self) { index in
+            // A shockwave first, then two rings of sparks at different speeds.
+            Circle()
+                .stroke(Color.airFliqGreen.opacity(active ? 0 : 0.75), lineWidth: 2)
+                .frame(width: 96, height: 96)
+                .scaleEffect(active ? 2.05 : 0.8)
+                .animation(.timingCurve(0.16, 1, 0.3, 1, duration: 1.05), value: active)
+
+            ForEach(0..<18, id: \.self) { index in
+                let long = index.isMultiple(of: 2)
                 Capsule()
-                    .fill(index.isMultiple(of: 2) ? Color.airFliqGreen : .airFliqCyan)
-                    .frame(width: 3, height: 14)
-                    .offset(y: active ? -82 : -30)
-                    .rotationEffect(.degrees(Double(index) * 30))
-                    .opacity(active ? 0 : 0.9)
-                    .animation(.easeOut(duration: 0.9).delay(Double(index) * 0.018),
-                               value: active)
+                    .fill([Color.airFliqGreen, .airFliqCyan, .airFliqBlue][index % 3])
+                    .frame(width: long ? 3 : 2.4, height: long ? 15 : 9)
+                    .offset(y: active ? (long ? -90 : -68) : -30)
+                    .rotationEffect(.degrees(Double(index) * 20 + (long ? 0 : 10)))
+                    .opacity(active ? 0 : 0.95)
+                    .animation(.timingCurve(0.16, 1, 0.3, 1, duration: long ? 1.1 : 0.85)
+                        .delay(Double(index % 6) * 0.014), value: active)
             }
         }
+    }
+}
+
+private struct ReadyRouteChip: View {
+    let symbol: String
+    let title: String
+    let isOn: Bool
+    let order: Int
+    let revealed: Bool
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: symbol)
+                .font(.system(size: 9, weight: .semibold))
+            Text(title)
+                .font(.system(size: 10.5, weight: .semibold))
+                .lineLimit(1)
+                .fixedSize()
+            Circle()
+                .fill(isOn ? Color.airFliqGreen : Color.white.opacity(0.22))
+                .frame(width: 5, height: 5)
+                .shadow(color: isOn ? Color.airFliqGreen.opacity(0.8) : .clear, radius: 3)
+        }
+        .foregroundStyle(isOn ? Color.primary : .secondary)
+        .padding(.horizontal, 8)
+        .frame(height: 24)
+        .background(Color.white.opacity(isOn ? 0.075 : 0.035), in: Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(isOn ? 0.12 : 0.06), lineWidth: 1))
+        .opacity(revealed ? 1 : 0)
+        .offset(y: revealed ? 0 : 6)
+        .animation(.spring(response: 0.55, dampingFraction: 0.8).delay(0.25 + Double(order) * 0.06),
+                   value: revealed)
+    }
+}
+
+extension AnyTransition {
+    /// Stages trade places with depth: the new one drifts in sharpening, the
+    /// old one drifts out softening, instead of a flat slide.
+    static var airFliqStage: AnyTransition {
+        .asymmetric(
+            insertion: .modifier(active: StageMotion(offset: 44, scale: 0.965, blur: 7, opacity: 0),
+                                 identity: StageMotion(offset: 0, scale: 1, blur: 0, opacity: 1)),
+            removal: .modifier(active: StageMotion(offset: -44, scale: 0.975, blur: 7, opacity: 0),
+                               identity: StageMotion(offset: 0, scale: 1, blur: 0, opacity: 1))
+        )
+    }
+}
+
+private struct StageMotion: ViewModifier {
+    let offset: CGFloat
+    let scale: CGFloat
+    let blur: CGFloat
+    let opacity: Double
+
+    func body(content: Content) -> some View {
+        content
+            .offset(x: offset)
+            .scaleEffect(scale)
+            .blur(radius: blur)
+            .opacity(opacity)
     }
 }
 
@@ -2035,55 +2527,64 @@ struct AirFliqFlightField: View {
         TimelineView(.animation(minimumInterval: 1.0 / 45.0,
                                 paused: reduceMotion)) { timeline in
             let time = timeline.date.timeIntervalSinceReferenceDate
-            ZStack {
-                LinearGradient(colors: [
-                    Color(red: 0.035, green: 0.047, blue: 0.075),
-                    Color(red: 0.055, green: 0.045, blue: 0.085),
-                    Color(red: 0.025, green: 0.028, blue: 0.045),
-                ], startPoint: .topLeading, endPoint: .bottomTrailing)
+            // One Canvas draws the whole field. It takes exactly the space it
+            // is offered, never influences layout, and is cheap to redraw.
+            Canvas { context, size in
+                let bounds = CGRect(origin: .zero, size: size)
+                context.fill(Path(bounds), with: .linearGradient(
+                    Gradient(colors: [
+                        Color(red: 0.035, green: 0.047, blue: 0.075),
+                        Color(red: 0.055, green: 0.045, blue: 0.085),
+                        Color(red: 0.025, green: 0.028, blue: 0.045),
+                    ]),
+                    startPoint: .zero,
+                    endPoint: CGPoint(x: size.width, y: size.height)))
 
-                Circle()
-                    .fill(Color.airFliqBlue.opacity(0.16 * intensity))
-                    .frame(width: 360, height: 360)
-                    .blur(radius: 90)
-                    .offset(x: -250 + sin(time * 0.22) * 24,
-                            y: -210 + cos(time * 0.18) * 18)
+                let middle = CGPoint(x: size.width / 2, y: size.height / 2)
+                let blue = CGPoint(x: middle.x - 250 + CGFloat(sin(time * 0.22)) * 24,
+                                   y: middle.y - 210 + CGFloat(cos(time * 0.18)) * 18)
+                let violet = CGPoint(x: middle.x + 270 + CGFloat(cos(time * 0.19)) * 28,
+                                     y: middle.y + 240 + CGFloat(sin(time * 0.16)) * 22)
+                for (center, color, radius, strength) in [
+                    (blue, Color.airFliqBlue, CGFloat(270), 0.17),
+                    (violet, Color.airFliqViolet, CGFloat(300), 0.15),
+                ] {
+                    context.fill(
+                        Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius,
+                                               width: radius * 2, height: radius * 2)),
+                        with: .radialGradient(
+                            Gradient(colors: [color.opacity(strength * intensity),
+                                              color.opacity(strength * 0.35 * intensity),
+                                              color.opacity(0)]),
+                            center: center, startRadius: 0, endRadius: radius))
+                }
 
-                Circle()
-                    .fill(Color.airFliqViolet.opacity(0.14 * intensity))
-                    .frame(width: 390, height: 390)
-                    .blur(radius: 110)
-                    .offset(x: 270 + cos(time * 0.19) * 28,
-                            y: 240 + sin(time * 0.16) * 22)
-
-                Canvas { context, size in
-                    for index in 0..<4 {
-                        var path = Path()
-                        let y = size.height * (0.18 + CGFloat(index) * 0.19)
-                        path.move(to: CGPoint(x: -40, y: y))
-                        path.addCurve(
-                            to: CGPoint(x: size.width + 40, y: y + (index.isMultiple(of: 2) ? 26 : -22)),
-                            control1: CGPoint(x: size.width * 0.28,
-                                              y: y + CGFloat(sin(time * 0.30 + Double(index))) * 30),
-                            control2: CGPoint(x: size.width * 0.72,
-                                              y: y - CGFloat(cos(time * 0.24 + Double(index))) * 28)
-                        )
-                        context.stroke(
-                            path,
-                            with: .linearGradient(
-                                Gradient(colors: [.clear,
-                                                  Color.airFliqBlue.opacity(0.12 * intensity),
-                                                  Color.airFliqViolet.opacity(0.10 * intensity),
-                                                  .clear]),
-                                startPoint: CGPoint(x: 0, y: y),
-                                endPoint: CGPoint(x: size.width, y: y)
-                            ),
-                            style: StrokeStyle(lineWidth: 1,
-                                               lineCap: .round,
-                                               dash: [2, 12],
-                                               dashPhase: CGFloat(-time * 18 - Double(index) * 9))
-                        )
-                    }
+                for index in 0..<4 {
+                    var path = Path()
+                    let y = size.height * (0.18 + CGFloat(index) * 0.19)
+                    path.move(to: CGPoint(x: -40, y: y))
+                    path.addCurve(
+                        to: CGPoint(x: size.width + 40, y: y + (index.isMultiple(of: 2) ? 26 : -22)),
+                        control1: CGPoint(x: size.width * 0.28,
+                                          y: y + CGFloat(sin(time * 0.30 + Double(index))) * 30),
+                        control2: CGPoint(x: size.width * 0.72,
+                                          y: y - CGFloat(cos(time * 0.24 + Double(index))) * 28)
+                    )
+                    context.stroke(
+                        path,
+                        with: .linearGradient(
+                            Gradient(colors: [.clear,
+                                              Color.airFliqBlue.opacity(0.12 * intensity),
+                                              Color.airFliqViolet.opacity(0.10 * intensity),
+                                              .clear]),
+                            startPoint: CGPoint(x: 0, y: y),
+                            endPoint: CGPoint(x: size.width, y: y)
+                        ),
+                        style: StrokeStyle(lineWidth: 1,
+                                           lineCap: .round,
+                                           dash: [2, 12],
+                                           dashPhase: CGFloat(-time * 18 - Double(index) * 9))
+                    )
                 }
             }
         }

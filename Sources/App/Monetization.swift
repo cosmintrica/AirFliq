@@ -11,10 +11,42 @@ extension Notification.Name {
     static let airFliqSendSucceeded = Notification.Name("airfliq.send.succeeded")
 }
 
+/// Five completed sends per local calendar day are free forever, without a
+/// trial. Only a share that AirDrop reports as completed is counted, so
+/// cancelling the native panel never consumes the allowance.
+struct FreeSendAllowance {
+    static let dailyLimit = 5
+    static let dayKey = "airfliq.free.day.v1"
+    static let countKey = "airfliq.free.sends.v1"
+
+    var defaults: UserDefaults = .standard
+    var calendar: Calendar = .current
+
+    func used(on date: Date = Date()) -> Int {
+        guard defaults.string(forKey: Self.dayKey) == dayStamp(date) else { return 0 }
+        return min(Self.dailyLimit, max(0, defaults.integer(forKey: Self.countKey)))
+    }
+
+    @discardableResult
+    func recordSend(on date: Date = Date()) -> Int {
+        let total = min(Self.dailyLimit, used(on: date) + 1)
+        defaults.set(dayStamp(date), forKey: Self.dayKey)
+        defaults.set(total, forKey: Self.countKey)
+        return total
+    }
+
+    private func dayStamp(_ date: Date) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d",
+                      parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+}
+
 @MainActor
 final class Monetization: NSObject, @preconcurrency PurchasesDelegate, ObservableObject {
     static let shared = Monetization()
     static let trialDuration: TimeInterval = 7 * 24 * 60 * 60
+    static let freeDailySendLimit = FreeSendAllowance.dailyLimit
     static let entitlementID = "Pro"
     static let lifetimeProductID = "com.cosmintrica.airfliq.lifetime"
     static let trialProductID = "com.cosmintrica.airfliq.trial7day"
@@ -59,6 +91,8 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
     @Published private(set) var trialStoreState: StoreState = .notConfigured
     @Published private(set) var trialStartedAt: Date?
     @Published private(set) var trialReferenceDate: Date
+    @Published private(set) var freeSendsUsedToday: Int
+    private let freeAllowance: FreeSendAllowance
     private var usesVerifiedTrialClock = false
     private var validatedTrialProduct: StoreProduct?
 
@@ -105,8 +139,11 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
         self.init(catalogRequests: .live)
     }
 
-    init(catalogRequests: CatalogRequests) {
+    init(catalogRequests: CatalogRequests,
+         freeAllowance: FreeSendAllowance = FreeSendAllowance()) {
         self.catalogRequests = catalogRequests
+        self.freeAllowance = freeAllowance
+        freeSendsUsedToday = freeAllowance.used()
 #if MAC_APP_STORE
         trialStartedAt = nil
         trialReferenceDate = Date()
@@ -145,21 +182,46 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
         if Self.isLocalTransferTest { return Self.localTransferTestMessage }
         guard isTrialStarted else { return "7-day trial ready to start" }
         if isTrialExpired { return "Trial ended" }
+        return "\(trialRemainingShortText) in your trial"
+    }
+
+    /// "6 days left" or "5 hours left", for compact trial status.
+    var trialRemainingShortText: String {
         if trialRemainingTime < 24 * 60 * 60 {
             let hours = max(1, Int(ceil(trialRemainingTime / (60 * 60))))
-            return hours == 1 ? "1 hour left in your trial"
-                              : "\(hours) hours left in your trial"
+            return hours == 1 ? "1 hour left" : "\(hours) hours left"
         }
-        return trialDaysRemaining == 1 ? "1 day left in your trial"
-                                       : "\(trialDaysRemaining) days left in your trial"
+        return trialDaysRemaining == 1 ? "1 day left" : "\(trialDaysRemaining) days left"
     }
-    var canSend: Bool { Self.isLocalTransferTest || isPro || isTrialActive }
+
+    /// Pro, an active trial, or local QA. The free allowance is not unlimited.
+    var hasUnlimitedSending: Bool { Self.isLocalTransferTest || isPro || isTrialActive }
+    var freeSendsRemainingToday: Int {
+        max(0, Self.freeDailySendLimit - freeSendsUsedToday)
+    }
+    var canSend: Bool { hasUnlimitedSending || freeSendsRemainingToday > 0 }
+
+    var freeAllowanceText: String {
+        switch freeSendsRemainingToday {
+        case 0: return "Free sends refill tomorrow"
+        case 1: return "1 free send left today"
+        case let left: return "\(left) of \(Self.freeDailySendLimit) free sends left today"
+        }
+    }
+
+    /// One line describing what the user can do right now.
+    var accessStatusText: String {
+        if Self.isLocalTransferTest { return Self.localTransferTestMessage }
+        if isPro { return "Pro  •  Lifetime" }
+        if isTrialActive { return "Unlimited trial  •  \(trialRemainingShortText)" }
+        return freeAllowanceText
+    }
 
     var setupSummary: String {
         if Self.isLocalTransferTest { return Self.localTransferTestMessage }
-        return lifetimeProduct == nil
-            ? "7-day trial available  •  Lifetime Pro"
-            : "7-day trial available  •  Lifetime Pro \(price)"
+        if isPro { return "Lifetime Pro  •  Unlimited sending" }
+        if isTrialActive { return "Unlimited trial  •  \(trialRemainingShortText)" }
+        return "Free: \(Self.freeDailySendLimit) sends a day  •  Unlimited with Pro"
     }
 
     /// Never invent a storefront price. RevenueCat supplies the localized
@@ -200,13 +262,54 @@ final class Monetization: NSObject, @preconcurrency PurchasesDelegate, Observabl
 
     func refresh() {
         refreshTrialClock()
+        refreshFreeAllowance()
         guard isConfigured else { return }
         refreshCustomerInfo(fetchPolicy: .fetchCurrent)
         if lifetimeProduct == nil || validatedTrialProduct == nil { refreshCatalog() }
     }
 
+    /// Counts a completed free send. Pro, an active trial and local QA are
+    /// unlimited and never consume the daily allowance.
+    func recordSuccessfulSend() {
+        refreshTrialClock()
+        refreshFreeAllowance()
+        guard !hasUnlimitedSending else { return }
+        freeSendsUsedToday = freeAllowance.recordSend()
+        notifyChanged()
+    }
+
+    /// The allowance refills at local midnight; re-read it whenever the app
+    /// becomes active or is about to send.
+    func refreshFreeAllowance() {
+        let used = freeAllowance.used()
+        guard used != freeSendsUsedToday else { return }
+        freeSendsUsedToday = used
+        notifyChanged()
+    }
+
+    /// An offer code redeemed through the App Store creates a normal StoreKit
+    /// transaction. Sync it to RevenueCat so the Pro entitlement appears now.
+    func syncAfterOfferCodeRedemption(completion: @escaping (PurchaseOutcome) -> Void) {
+        guard isConfigured, !Self.isLocalTransferTest else {
+            completion(.failed("Codes can be redeemed in the Mac App Store build."))
+            return
+        }
+        Purchases.shared.syncPurchases { [weak self] info, error in
+            guard let self else { return }
+            apply(info)
+            if isPro {
+                completion(.purchased)
+            } else if let error {
+                completion(.failed(error.localizedDescription))
+            } else {
+                completion(.nothingToRestore)
+            }
+        }
+    }
+
     func resolveSendAccess(completion: @escaping (Bool) -> Void) {
         refreshTrialClock()
+        refreshFreeAllowance()
         guard !canSend, isConfigured else {
             completion(canSend)
             return

@@ -45,10 +45,43 @@ import RevenueCat
         precondition(model.storeState == .ready && model.trialStoreState == .ready)
         precondition(model.lifetimeProduct != nil && model.trialProduct != nil)
         precondition(model.localizedLifetimePrice == "4,99 €")
-        precondition(!model.isConfigured && !model.isPro && !model.isTrialStarted && !model.canSend,
+        precondition(!model.isConfigured && !model.isPro && !model.isTrialStarted && !model.hasUnlimitedSending,
                      "Loading products must never authorize a transfer or invent a trial")
     }
     @MainActor static func main() {
+        do {
+            // Five completed sends per local day, then a refill at midnight.
+            let suite = "com.cosmintrica.airfliq.free-allowance-tests"
+            let defaults = UserDefaults(suiteName: suite)!
+            defaults.removePersistentDomain(forName: suite)
+            defer { defaults.removePersistentDomain(forName: suite) }
+            var calendar = Calendar(identifier: .gregorian)
+            calendar.timeZone = TimeZone(identifier: "Europe/Bucharest")!
+            let allowance = FreeSendAllowance(defaults: defaults, calendar: calendar)
+            let morning = ISO8601DateFormatter().date(from: "2026-10-01T06:00:00Z")!
+            let lateNight = ISO8601DateFormatter().date(from: "2026-10-01T20:59:00Z")!
+            let nextDay = ISO8601DateFormatter().date(from: "2026-10-01T21:01:00Z")!
+            precondition(allowance.used(on: morning) == 0)
+            for expected in 1...7 {
+                precondition(allowance.recordSend(on: morning) == min(expected, 5))
+            }
+            precondition(allowance.used(on: lateNight) == 5, "Still the same local day")
+            precondition(allowance.used(on: nextDay) == 0, "Refills after local midnight")
+            precondition(allowance.recordSend(on: nextDay) == 1)
+
+            let access = Monetization(catalogRequests: Requests().client,
+                                      freeAllowance: FreeSendAllowance(defaults: defaults,
+                                                                       calendar: calendar))
+            defaults.removePersistentDomain(forName: suite)
+            access.refreshFreeAllowance()
+            precondition(access.canSend && !access.hasUnlimitedSending
+                         && access.freeSendsRemainingToday == 5)
+            for _ in 0..<5 { access.recordSuccessfulSend() }
+            precondition(!access.canSend && access.freeSendsRemainingToday == 0,
+                         "The sixth send today needs the trial or Pro")
+            print("PASS: five free sends per local day, counted only on completion")
+        }
+
         for offeringFirst in [false, true] {
             let requests = Requests()
             let access = Monetization(catalogRequests: requests.client)
@@ -84,7 +117,7 @@ import RevenueCat
             access.refreshCatalog()
             requests.products[0]([])
             requests.offerings[0](nil)
-            precondition(access.trialProduct == nil && access.lifetimeProduct == nil && !access.canSend)
+            precondition(access.trialProduct == nil && access.lifetimeProduct == nil && !access.hasUnlimitedSending)
             requests.fire(1)
             precondition(requests.products.count == 2)
             requests.products[1]([trial, lifetime])
@@ -121,7 +154,7 @@ import RevenueCat
             }
             precondition(requests.products.count == 4)
             precondition(!requests.scheduled.contains(where: { $0.0 < 20 }), "Retries must be bounded")
-            precondition(access.localizedLifetimePrice == nil && access.trialProduct == nil && !access.canSend)
+            precondition(access.localizedLifetimePrice == nil && access.trialProduct == nil && !access.hasUnlimitedSending)
             access.refreshCatalog()
             precondition(requests.products.count == 5, "Reopening the paywall allows a fresh retry budget")
             requests.products[4]([trial, lifetime])
@@ -138,7 +171,7 @@ import RevenueCat
             access.refreshCatalog()
             requests.products[0]([badTrial, lifetime])
             requests.offerings[0](nil)
-            precondition(access.trialProduct == nil && access.lifetimeProduct != nil && !access.canSend)
+            precondition(access.trialProduct == nil && access.lifetimeProduct != nil && !access.hasUnlimitedSending)
         }
         print("PASS: paid, consumable and wrong-identifier trial products are rejected")
 
@@ -155,7 +188,7 @@ import RevenueCat
                                   presentedOfferingContext: PresentedOfferingContext(offeringIdentifier: "airfliq"),
                                   webCheckoutUrl: nil)
             requests.offerings[0](invalid)
-            precondition(access.lifetimeProduct == nil && access.trialProduct == nil && !access.canSend)
+            precondition(access.lifetimeProduct == nil && access.trialProduct == nil && !access.hasUnlimitedSending)
         }
         print("PASS: free, consumable, wrong-identifier and unpriced Lifetime products cannot unlock either action")
     }

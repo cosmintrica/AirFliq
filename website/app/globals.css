@@ -235,6 +235,11 @@ footer { border-top: 1px solid var(--line); }
 .legal-section ul { padding-left: 20px; margin: 10px 0 0; }
 .legal-section strong { color: #dbe0ea; }
 .legal-section a { color: #72caff; }
+.ph-claim { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; margin-top: 30px; }
+.ph-claim .button[disabled] { opacity: .6; cursor: wait; }
+.ph-code { padding: 16px 22px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.04); color: #f2f5fb; font: 700 clamp(18px, 4vw, 26px) var(--font-geist-mono); letter-spacing: .08em; cursor: copy; }
+.ph-left { color: #8f98aa; font-size: 13px; }
+.ph-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .support-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 28px; }
 .support-tile { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.025); }
 .support-tile strong { font-size: 14px; }

@@ -41,7 +41,7 @@ test("server-renders the complete AirFliq landing page", async () => {
   assert.match(html, /5<\/b> sends a day/);
   assert.match(html, /7<\/b> days unlimited/);
   assert.match(html, /\$4\.99/);
-  assert.match(html, /now in App Review/);
+  assert.match(html, /live on the Mac App Store since version 1\.0\.1/);
   assert.match(html, /Shipaton/);
   assert.match(html, /Built in <em>public/);
   assert.match(html, /devpost\.com\/software\/airfliq/);

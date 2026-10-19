@@ -309,7 +309,7 @@ export default function Home() {
             <span className="price-tag">US price, shown in your currency on the App Store</span>
           </article>
         </div>
-        <p className="price-note">Free daily sends arrive with version 1.0.1, now in App Review. Version 1.0.0 starts with the free 7-day trial.</p>
+        <p className="price-note">Free daily sends have been live on the Mac App Store since version 1.0.1.</p>
       </section>
 
       <section className="shipaton" id="shipaton">

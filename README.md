@@ -73,6 +73,24 @@ RevenueCat checklist.
 The landing page is in `website/` and includes product, privacy and support
 pages. The production site is <https://airfliq.vercel.app>.
 
+Vercel is not connected to this repository: a push does not deploy. Deploy from
+`website/` with `npx vercel link --project airfliq` and `npx vercel deploy --prod`.
+
+### Product Hunt codes
+
+<https://airfliq.vercel.app/ph> gives each visitor one free Lifetime Pro offer
+code (`app/ph`, `app/api/ph-code`). Apple shows neither which offer code was
+used nor how many, so the page keeps the record itself:
+
+- The codes are the `PH_CODES` environment variable in the Vercel project
+  `airfliq` (Production, sensitive): codes #400-#499 of the "Shipaton 2026
+  Judges" one-time batch, which expires on 2026-11-30. Codes never go into this
+  repository.
+- The record is the private Vercel Blob store `airfliq-ph` (Vercel > airfliq >
+  Storage). `ph/production/given/<code>` is a code that was handed out, and its
+  upload time is when it left. `ph/production/visitors/<hash>/<code>` gives a
+  returning visitor the same code. `npx vercel blob list` shows both.
+
 ## Verification
 
 GitHub Actions rebuilds the universal Mac app and validates the landing page on
